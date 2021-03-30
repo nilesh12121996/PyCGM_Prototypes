@@ -13,8 +13,6 @@ def parameters(*args):
         @functools.wraps(func)
         def set_required_markers(self, *args):
             required_params = [self.find(param) for param in params]
-            functions_index = self.functions_mapping[func.__name__]
-            self.functions[functions_index].marker_params = required_params
             return func(self, *required_params)
         return set_required_markers
     return decorator
@@ -28,15 +26,6 @@ class pyCGM():
 
         self.measurement_keys = [measurement for measurement in self.measurements[0]]
         self.measurement_mapping = { measurement: index for index, measurement in enumerate(self.measurement_keys) }
-
-        self.functions = [self.calc_pelvis_joint_center]
-        self.functions_mapping = { function.__name__: index for index, function in enumerate(self.functions) }
-
-        self.calc_pelvis_joint_center.params = [self.marker('RASI'),
-                                                self.marker('LASI'),
-                                                self.marker('RPSI'),
-                                                self.marker('LPSI'),
-                                                self.marker('SACR')]
 
         self.pelvis_joint_center = [np.NaN, np.NaN]
 
@@ -69,7 +58,7 @@ class pyCGM():
         self.calc_angles(frame)
 
     def calc_angles(self, frame):
-        self.calc_pelvis_joint_center(self, self.calc_pelvis_joint_center.params)
+        self.calc_pelvis_joint_center(self, self.marker('RASI'), self.marker('LASI'), self.marker('RPSI'), self.marker('LPSI'), self.marker('SACR'))
 
     @staticmethod
     def calc_pelvis_joint_center(self, rasi, lasi, rpsi, lpsi, sacr):
