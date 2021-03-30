@@ -24,9 +24,8 @@
 # Input and output of pycgm functions
 
 import sys
-import c3dpy3 as c3d
+from . import c3dpy3 as c3d
 pyver = 3
-print("Using python 3 c3d loader - c3dpy3")
 
 useEZC3D = False
 

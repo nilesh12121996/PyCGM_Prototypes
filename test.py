@@ -3,8 +3,8 @@ import timeit
 NUM_RUNS = 20
 
 setup = """
-import pycgmIO
-from cgm import CGM
+from utils import pycgmIO
+from prototypes.cgm import CGM
 
 data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
 """
@@ -18,8 +18,8 @@ print(time)
 
 
 setup = """
-import pycgmIO
-from decorator import CGM as decCGM
+from utils import pycgmIO
+from prototypes.decorator import CGM as decCGM
 
 data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
 """
@@ -33,8 +33,8 @@ print(time)
 
 
 setup = """
-import pycgmIO
-from decorator import ModCGM as decModCGM
+from utils import pycgmIO
+from prototypes.decorator import ModCGM as decModCGM
 
 data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
 """
