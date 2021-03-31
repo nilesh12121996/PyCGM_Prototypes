@@ -24,4 +24,4 @@ if __name__ == '__main__':
         with Pool(processes=n + 1) as pool:
             res = pool.starmap(fun, combined)
 
-        print(f"nproc: {nproc}, time: {time.time() - start}")
+        print(f"nproc: {n + 1}, time: {time.time() - start}")
