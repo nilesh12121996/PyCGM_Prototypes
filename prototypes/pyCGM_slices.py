@@ -15,16 +15,31 @@ class pyCGM():
 
         # marker data is flattened [xyzxyz...] per frame
         self.measurements = dict(zip(measurements[0], measurements[1]))
-        self.marker_data = np.array([np.array(list(frame.values())).flatten() for frame in markers][:500]) # testing with first 500 frames
+        self.marker_data = np.array([np.array(list(frame.values())).flatten() for frame in markers])
 
         # list of marker names
         self.marker_keys = markers[0].keys()
+        self.marker_mapping = {marker_key: slice(index*3, index*3+3, 1) for index, marker_key in enumerate(self.marker_keys)}
 
         # some struct helper attributes
         self.num_frames = len(self.marker_data)
         self.num_axes = len(self.axis_result_keys)
         self.num_floats_per_frame = self.num_axes * 16
         self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
+
+        # list of functions and their parameters
+        self.funcs = [self.pelvis_axis]
+        self.func_mapping = {function.__name__: index for index, function in enumerate(self.funcs)}
+        self.func_slices = [
+                                [
+                                    # pelvis_axis 
+                                    self.marker_mapping['RASI'],
+                                    self.marker_mapping['LASI'],
+                                    self.marker_mapping['RPSI'],
+                                    self.marker_mapping['LPSI'],
+                                    self.marker_mapping['SACR'] if 'SACR' in self.marker_mapping.keys() else None
+                                ]
+                            ]
 
     @property
     def angle_result_keys(self):
@@ -104,14 +119,14 @@ class pyCGM():
         else:
             return structured_marker_data
 
-    def multi_run(self):
+    def multi_run(self, cores=None):
         # parallelize on blocks of frames 
 
         flat_rows = self.marker_data
 
         # create a shared array to store axis results
         shared_axes = mp.RawArray('f', self.num_frames * self.num_axes * 16)
-        nprocs = os.cpu_count()
+        nprocs = cores if cores is not None else os.cpu_count() - 1
         marker_data_blocks = np.array_split(flat_rows, nprocs)
 
         processes = []
@@ -143,7 +158,7 @@ class pyCGM():
         if shared_axes is not None:  # multiprocessing, write to shared memory
             shared_array = np.frombuffer(shared_axes, dtype=np.float32)
 
-            for index, frame in enumerate(frames):
+            for frame in frames:
                 flat_results = np.append(
                     flat_results, self.calc(frame).flatten())
 
@@ -162,16 +177,11 @@ class pyCGM():
             return self.result
 
     def calc(self, frame):
-        marker = self.structure_marker_data(frame)
-        results = np.array([])
-        pelvis_axis = np.array(self.pelvis_axis(
-            marker['RASI'],
-            marker['LASI'],
-            marker['RPSI'],
-            marker['LPSI'],
-            marker['RASI']
-        ))
-        
+        results = []
+        for index, func in enumerate(self.funcs):
+            # 'pelvis_axis = ...' will become 'results = np.append(results, ...)' when all funcs are implemented
+            pelvis_axis = func(*list(map(lambda req_slice:  frame[req_slice] if req_slice is not None else None, self.func_slices[index])))
+            
         for i in range(self.num_axes): # pelvis is the only calculation here, but results should take the shape of all axis results
             results = np.append(results, pelvis_axis)
         return results
@@ -226,7 +236,7 @@ class pyCGM():
             # create a shared array of all subjects' results
             shared_axes = mp.RawArray('f', num_frames * num_axes * 15)
 
-            nprocs = os.cpu_count()
+            nprocs = os.cpu_count() - 1
             split_subjects_by_core = np.array_split(np.asarray(self.subject_list), nprocs)
 
             processes = []
@@ -262,8 +272,8 @@ class pyCGM():
             shared_array = np.frombuffer(shared_axes, dtype=np.float32)
             floats = []
             for subject in split_subjects_by_core[core_index]:
-                subject.run()
-                floats.append(np.array([[frame[i].flatten()] for i in range(subject.num_axes) for frame in subject.result]).flatten())
+               subject.run()
+               floats.append(np.array([[frame[i].flatten()] for i in range(subject.num_axes) for frame in subject.result]).flatten())
             shared_array[start_index:end_index] = np.asarray(floats).flatten()
 
         def joint_axis(self, key, start=None, end=None):
@@ -271,22 +281,22 @@ class pyCGM():
 
             return [subject.result[start:end][key] for subject in self.subject_list]
 
-measurements = pycgmIO.loadVSK('../SampleData/Sample_2/RoboSM.vsk')
-marker_data = pycgmIO.loadData('../SampleData/Sample_2/RoboWalk.c3d')
+# measurements = pycgmIO.loadVSK('../SampleData/Sample_2/RoboSM.vsk')
+# marker_data = pycgmIO.loadData('../SampleData/Sample_2/RoboWalk.c3d')
 
-matt = pyCGM(measurements, marker_data)
-steve = pyCGM(measurements, marker_data)
-bob = pyCGM(measurements, marker_data)
+# matt = pyCGM(measurements, marker_data)
+# steve = pyCGM(measurements, marker_data)
+# bob = pyCGM(measurements, marker_data)
 
-# running one subject, giving each core a block of frames to calculate
-matt.multi_run()
-matt_pelvis = matt.result['Pelvis'] # matt's pelvis axis at each frame
-matt_pelvis_frame_400 = matt.result[400]['Pelvis'] # matt's pelvis axis at frame 400
+# # running one subject, giving each core a block of frames to calculate
+# matt.multi_run()
+# matt_pelvis = matt.result['Pelvis'] # matt's pelvis axis at each frame
+# matt_pelvis_frame_400 = matt.result[400]['Pelvis'] # matt's pelvis axis at frame 400
 
-# run 18 subjects, giving each core a list of subjects to calculate
-subjects = pyCGM.SubjectManager([matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob])
-subjects.multi_run()
-all_pelvis = subjects.joint_axis('Pelvis') # pelvis axes of all subjects, all frames
-pelvis_frames_5_15 = subjects.joint_axis('Pelvis', 5, 15) # pelvis axes of all subjects, frames 5-15
+# # run 18 subjects, giving each core a list of subjects to calculate
+# # subjects = pyCGM.SubjectManager([matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob])
+# # subjects.multi_run()
+# # all_pelvis = subjects.joint_axis('Pelvis') # pelvis axes of all subjects, all frames
+# # pelvis_frames_5_15 = subjects.joint_axis('Pelvis', 5, 15) # pelvis axes of all subjects, frames 5-15
 
-sys.exit()
+# sys.exit()
