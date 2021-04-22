@@ -1,6 +1,6 @@
 import timeit
 
-NUM_RUNS = 5
+NUM_RUNS = 10
 
 #setup = """
 #from utils import pycgmIO
@@ -99,16 +99,52 @@ NUM_RUNS = 5
 
 setup = """
 from utils import pycgmIO
-from prototypes.pyCGM_structs import pyCGM
+from prototypes.pyCGM_one_struct import pyCGM
 from numpy import array, random
 
 data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
 measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
 
-matt = pyCGM(measurements, data)
 """
-time = timeit.timeit(
+time_struct_single = timeit.timeit(
     '''
+matt = pyCGM(measurements, data)
+matt.run()
+    ''',
+    setup=setup,
+    number=NUM_RUNS
+)
+
+setup = """
+from utils import pycgmIO
+from prototypes.pyCGM_slices import pyCGM
+from numpy import array, random
+
+data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
+
+"""
+time_slice_single = timeit.timeit(
+    '''
+matt = pyCGM(measurements, data)
+matt.run()
+    ''',
+    setup=setup,
+    number=NUM_RUNS
+)
+
+setup = """
+from utils import pycgmIO
+from prototypes.pyCGM_one_struct import pyCGM
+from numpy import array, random
+
+data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
+
+"""
+time_struct_multi = timeit.timeit(
+    '''
+matt = pyCGM(measurements, data)
 matt.multi_run(1)
     ''',
     setup=setup,
@@ -123,59 +159,23 @@ from numpy import array, random
 data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
 measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
 
-matt = pyCGM(measurements, data)
 """
-time2 = timeit.timeit(
+time_slice_multi = timeit.timeit(
     '''
+matt = pyCGM(measurements, data)
 matt.multi_run(1)
-    ''',
-    setup=setup,
-    number=NUM_RUNS
-)
-
-setup = """
-from utils import pycgmIO
-from prototypes.pyCGM_structs import pyCGM
-from numpy import array, random
-
-data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
-
-matt = pyCGM(measurements, data)
-"""
-time3 = timeit.timeit(
-    '''
-matt.multi_run()
-    ''',
-    setup=setup,
-    number=NUM_RUNS
-)
-
-setup = """
-from utils import pycgmIO
-from prototypes.pyCGM_slices import pyCGM
-from numpy import array, random
-
-data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
-
-matt = pyCGM(measurements, data)
-"""
-time4 = timeit.timeit(
-    '''
-matt.multi_run()
     ''',
     setup=setup,
     number=NUM_RUNS
 )
 
 print('\nNumber of runs: ', NUM_RUNS)
-print("Structuring each frame (1 core): %.2f" % time)
-print("Passing known slices (1 core): %.2f" % time2)
-print("\nStructuring each frame (multicore): %.2f" % time3)
-print("Passing known slices (multicore): %.2f" % time4)
+print("One marker struct (run()): %.2f" % time_struct_single)
+print("Passing known slices (run()): %.2f" % time_slice_single)
+print("\nOne marker struct (multi_run(1)): %.2f" % time_struct_multi)
+print("Passing known slices (multi_run(1)): %.2f" % time_slice_multi)
 
-print('\nSeconds difference (1 core): %.2f' % (time - time2))
-print('Percentage difference: (1 core): %.2f' % ((time/time2)*100))
-print('\nSeconds difference (multicore): %.2f' % (time3 - time4))
-print('Percentage difference: (multicore): %.2f' % ((time3/time4)*100))
+print('\nSeconds difference (run()): %.2f' % (time_struct_single - time_slice_single))
+print('Percentage difference (run()): %.2f' % ((time_struct_single/time_slice_single)*100-100))
+print('\nSeconds difference (multi_run(1)): %.2f' % (time_struct_multi-time_slice_multi))
+print('Percentage difference: (multi_run(1)): %.2f' % ((time_struct_multi/time_slice_multi)*100-100))

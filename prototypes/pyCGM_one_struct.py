@@ -13,33 +13,23 @@ class pyCGM():
 
     def __init__(self, measurements, markers):
 
+
         # marker data is flattened [xyzxyz...] per frame
         self.measurements = dict(zip(measurements[0], measurements[1]))
-        self.marker_data = np.array([np.array(list(frame.values())).flatten() for frame in markers])
 
         # list of marker names
         self.marker_keys = markers[0].keys()
         self.marker_mapping = {marker_key: slice(index*3, index*3+3, 1) for index, marker_key in enumerate(self.marker_keys)}
 
+        # structured marker data
+        self.marker_struct = self.structure_marker_data(markers)
+
         # some struct helper attributes
-        self.num_frames = len(self.marker_data)
+        self.num_frames = len(self.marker_struct)
         self.num_axes = len(self.axis_result_keys)
         self.num_floats_per_frame = self.num_axes * 16
         self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
 
-        # list of functions and their parameters
-        self.funcs = [self.pelvis_axis]
-        self.func_mapping = {function.__name__: index for index, function in enumerate(self.funcs)}
-        self.func_slices = [
-                                [
-                                    # pelvis_axis 
-                                    self.marker_mapping['RASI'],
-                                    self.marker_mapping['LASI'],
-                                    self.marker_mapping['RPSI'],
-                                    self.marker_mapping['LPSI'],
-                                    self.marker_mapping['SACR'] if 'SACR' in self.marker_mapping.keys() else None
-                                ]
-                            ]
 
     @property
     def angle_result_keys(self):
@@ -97,32 +87,15 @@ class pyCGM():
         # returns a structured array that allows marker [x, y, z] 
         # arrays to be retrieved by marker_struct[optional frame index or slice][marker name]
 
-        num_triples = len(self.marker_keys)
-
-        # if we're working with just 1 frame, add axis so marker_frames[i] is an array and not a coordinate
-        if marker_frames.ndim == 1:
-            marker_frames = marker_frames[np.newaxis]
-            num_frames = 1
-        else:
-            num_frames = self.num_frames
-
         marker_row_dtype = np.dtype([(name, '3f8') for name in self.marker_keys])
         marker_data_dtype = np.dtype((marker_row_dtype))
 
-        structured_marker_data = np.empty((num_frames), dtype=marker_data_dtype)
-
-        for i in range(num_frames):
-            structured_marker_data[i] = np.asarray(tuple(np.hsplit(marker_frames[i], num_triples)), dtype=marker_row_dtype)
-
-        if structured_marker_data.size == 1:
-            return structured_marker_data[0]
-        else:
-            return structured_marker_data
+        return np.array([tuple(list(frame.values())) for frame in marker_frames], dtype=marker_row_dtype)
 
     def multi_run(self, cores=None):
         # parallelize on blocks of frames 
 
-        flat_rows = self.marker_data
+        flat_rows = self.marker_struct
 
         # create a shared array to store axis results
         shared_axes = mp.RawArray('f', self.num_frames * self.num_axes * 16)
@@ -164,18 +137,22 @@ class pyCGM():
             shared_array[index_offset * frame_result_size: index_end * frame_result_size] = flat_results
 
         else:  # single core, just calculate and structure
-            for frame in self.marker_data:
+            for frame in self.marker_struct:
                 flat_results = np.append(flat_results, self.calc(frame).flatten())
 
             # structure flat result array
             self.result = self.structure_trial_axes(flat_results)
 
     def calc(self, frame):
-        results = []
-        for index, func in enumerate(self.funcs):
-            # 'pelvis_axis = ...' will become 'results = np.append(results, ...)' when all funcs are implemented
-            pelvis_axis = func(*list(map(lambda req_slice:  frame[req_slice] if req_slice is not None else None, self.func_slices[index])))
-            
+        results = np.array([])
+        pelvis_axis = np.array(self.pelvis_axis(
+            frame['RASI'],
+            frame['LASI'],
+            frame['RPSI'],
+            frame['LPSI'],
+            frame['RASI']
+        ))
+        
         for i in range(self.num_axes): # pelvis is the only calculation here, but results should take the shape of all axis results
             results = np.append(results, pelvis_axis)
         return results
@@ -266,8 +243,8 @@ class pyCGM():
             shared_array = np.frombuffer(shared_axes, dtype=np.float32)
             floats = []
             for subject in split_subjects_by_core[core_index]:
-               subject.run()
-               floats.append(np.array([[frame[i].flatten()] for i in range(subject.num_axes) for frame in subject.result]).flatten())
+                subject.run()
+                floats.append(np.array([[frame[i].flatten()] for i in range(subject.num_axes) for frame in subject.result]).flatten())
             shared_array[start_index:end_index] = np.asarray(floats).flatten()
 
         def joint_axis(self, key, start=None, end=None):
@@ -279,15 +256,15 @@ class pyCGM():
 # marker_data = pycgmIO.loadData('../SampleData/Sample_2/RoboWalk.c3d')
 
 # matt = pyCGM(measurements, marker_data)
-# steve = pyCGM(measurements, marker_data)
-# bob = pyCGM(measurements, marker_data)
+# # steve = pyCGM(measurements, marker_data)
+# # bob = pyCGM(measurements, marker_data)
 
 # # running one subject, giving each core a block of frames to calculate
 # matt.multi_run()
 # matt_pelvis = matt.result['Pelvis'] # matt's pelvis axis at each frame
-# matt_pelvis_frame_400 = matt.result[400]['Pelvis'] # matt's pelvis axis at frame 400
+# matt_pelvis_frame_900 = matt.result[900]['Pelvis'] # matt's pelvis axis at frame 900
 
-# # # run 18 subjects, giving each core a list of subjects to calculate
+# # run 18 subjects, giving each core a list of subjects to calculate
 # # subjects = pyCGM.SubjectManager([matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob, matt, steve, bob])
 # # subjects.multi_run()
 # # all_pelvis = subjects.joint_axis('Pelvis') # pelvis axes of all subjects, all frames
