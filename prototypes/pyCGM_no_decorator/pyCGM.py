@@ -315,7 +315,7 @@ class pyCGM():
 
         if returns_angles is not None: # extend angles and update 
             self.angle_funcs.append(func)
-            self.angle_func_mapping = {function.__name__: index for index, function in enumerate(self.axis_funcs)}
+            self.angle_func_mapping = {function.__name__: index for index, function in enumerate(self.angle_funcs)}
             self.angle_func_parameters.append([])
             self.angle_result_mapping[function] = returns_angles
             self.angle_keys.extend(returns_angles)
