@@ -320,12 +320,12 @@ class pyCGM():
             self.angle_result_mapping[function] = returns_angles
             self.angle_keys.extend(returns_angles)
             self.num_angles = len(list(chain(*self.angle_result_mapping.values())))
-            self.angle_mapping = {axis: index for index, axis in enumerate(self.axis_keys)}
+            self.angle_mapping = {angle: index for index, angle in enumerate(self.angle_keys)}
             self.num_angle_floats_per_frame = self.num_angles * 3
             self.angle_results_shape = (self.num_frames, self.num_angles, 3)
             
             # set parameters of new function
-            self.angle_func_parameters[self.axis_func_mapping[func_name]] = params
+            self.angle_func_parameters[self.angle_func_mapping[func_name]] = params
 
     @property
     def default_angle_keys(self):
