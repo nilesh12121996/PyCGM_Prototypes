@@ -3,7 +3,8 @@ import numpy as np
 
 class harrington_hip_CGM(pyCGM):
 
-    # example hip_axis function using harrington pelvis joint center
+    # example hip_axis function using harrington hip joint center
+
     def __init__(self, measurements, static_trial, dynamic_trial):
         super().__init__(measurements, static_trial, dynamic_trial)
         self.modify_function('hip_axis', measurements=['InterAsisDistance', 'GCS'], axes=['Pelvis'])

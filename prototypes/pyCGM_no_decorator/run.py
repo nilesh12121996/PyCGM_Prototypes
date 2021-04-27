@@ -22,7 +22,7 @@ def harrington_cgm_example():
 
     harrington_subject = harrington_hip_CGM(measurements, static_trial, marker_data)
     harrington_subject.multi_run()
-    harrington_pelvis_frame_400 = harrington_subject.axes[400]['Hip']
+    harrington_hip_frame_400 = harrington_subject.axes[400]['Hip']
 
 def oxford_foot_example():
     # running one subject with an overridden function that returns additional angles
