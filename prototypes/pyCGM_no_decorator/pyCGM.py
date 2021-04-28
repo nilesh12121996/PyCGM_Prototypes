@@ -76,11 +76,11 @@ class pyCGM():
         self.axis_func_parameters = [
                                 [
                                     # pelvis_axis 
-                                    self.marker('RASI'),
-                                    self.marker('LASI'),
-                                    self.marker('RPSI'),
-                                    self.marker('LPSI'),
-                                    self.marker('SACR')
+                                    self.marker_mapping['RASI'],
+                                    self.marker_mapping['LASI'],
+                                    self.marker_mapping['RPSI'],
+                                    self.marker_mapping['LPSI'],
+                                    self.marker_mapping['SACR'] if 'SACR' in self.marker_mapping.keys() else None
                                 ],
 
                                 [
@@ -128,8 +128,8 @@ class pyCGM():
 
                                 [
                                     # pelvis_angle 
-                                    self.measurement('GCS'),
-                                    self.axis('Pelvis')
+                                    self.measurements['GCS'],
+                                    self.axis_mapping['Pelvis']
                                 ],
 
                                 [
@@ -177,25 +177,53 @@ class pyCGM():
                                 ]
                             ]
 
-    def marker(self, marker_name):
-        # retrieve the slice that corresponds to the given marker name
+    def find_marker(self, key):
+        # find the slice of a given marker name
 
-        return self.marker_mapping[marker_name] if marker_name in self.marker_mapping.keys() else None
+        value = None
 
-    def measurement(self, measurement_name):
-        # retrieve the value of the given measurement name
+        try:
+            value = self.marker_mapping[key] 
+        except KeyError:
+            pass
 
-        return self.measurements[measurement_name] if measurement_name in self.measurements.keys() else None
+        return value
 
-    def axis(self, axis_name):
-        # retrieve the axis results index of the given axis name
+    def find_measurement(self, key):
+        # find the value of a given measurement name
 
-        return self.axis_mapping[axis_name] if axis_name in self.axis_mapping.keys() else None
+        value = None
+        
+        try:
+            value = self.measurements[key] 
+        except KeyError:
+            pass
 
-    def angle(self, angle_name):
-        # retrieve the angle results index of the given angle name
+        return value
 
-        return self.angle_mapping[angle_name] if angle_name in self.angle_mapping.keys() else None
+    def find_axis_index(self, key):
+        # find the index of a given axis name
+
+        value = None
+
+        try:
+            value = self.axis_mapping[key]
+        except KeyError:
+            pass
+
+        return value
+
+    def find_angle_index(self, key):
+        # find the index of a given angle name
+
+        value = None
+
+        try:
+            value = self.angle_mapping[key]
+        except KeyError:
+            pass
+
+        return value
 
     def modify_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
         # modify an existing function's parameters and returned values
@@ -206,14 +234,14 @@ class pyCGM():
 
         # get parameters
         params = []
-        for marker_name in [marker_name for marker_name in(markers or [])]:
-            params.append(self.marker(marker_name))
-        for measurement_name in [measurement_name for measurement_name in(measurements or [])]:
-            params.append(self.measurement(measurement_name))
-        for axis_name in [axis_name for axis_name in(axes or [])]:
-            params.append(self.axis(axis_name))
-        for angle_name in [angle_name for angle_name in(angles or [])]:
-            params.append(self.angle(angle_name))
+        for marker in [marker for marker in(markers or [])]:
+            params.append(self.find_marker(marker))
+        for measurement in [measurement for measurement in(measurements or [])]:
+            params.append(self.find_measurement(measurement))
+        for axis in [axis for axis in(axes or [])]:
+            params.append(self.find_axis_index(axis))
+        for angle in [angle for angle in(angles or [])]:
+            params.append(self.find_angle_index(angle))
         
         if isinstance(function, str): # make sure a function name is passed
             if function in self.axis_func_mapping:
@@ -231,7 +259,7 @@ class pyCGM():
         if returns_axes is not None:
             self.axis_result_mapping[function] = returns_axes
             self.num_axes = len(list(chain(*self.axis_result_mapping.values())))
-            self.axis_mapping = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
+            self.axis_mapping = {axis: index for index, axis in enumerate(self.axis_keys)}
             self.num_axis_floats_per_frame = self.num_axes * 16
             self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
 
@@ -239,7 +267,7 @@ class pyCGM():
         if returns_angles is not None:
             self.angle_result_mapping[function] = returns_angles
             self.num_angles = len(list(chain(*self.angle_result_mapping.values())))
-            self.angle_mapping = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
+            self.angle_mapping = {angle: index for index, angle in enumerate(self.angle_keys)}
             self.num_angle_floats_per_frame = self.num_angles * 3
             self.angle_results_shape = (self.num_frames, self.num_angles, 3)
 
@@ -263,13 +291,13 @@ class pyCGM():
         # get parameters
         params = []
         for marker in [marker for marker in(markers or [])]:
-            params.append(self.marker(marker))
+            params.append(self.find_marker(marker))
         for measurement in [measurement for measurement in(measurements or [])]:
-            params.append(self.measurement(measurement))
+            params.append(self.find_measurement(measurement))
         for axis in [axis for axis in(axes or [])]:
-            params.append(self.axis(axis))
+            params.append(self.find_axis_index(axis))
         for angle in [angle for angle in(angles or [])]:
-            params.append(self.angle(angle))
+            params.append(self.find_angle_index(angle))
 
         if returns_axes is not None: # extend axes and update
             self.axis_funcs.append(func)
@@ -420,11 +448,9 @@ class pyCGM():
     def calc(self, frame):
         axis_results = []
         angle_results = []
-        
-        # run axis functions in sequence
-        for index, func in enumerate(self.axis_funcs):
-            axis_params = []
 
+        for index, func in enumerate(self.axis_funcs): # calculate axes
+            axis_params = []
             for param in self.axis_func_parameters[index]:
                 if isinstance(param, slice): # marker data slice
                     axis_params.append(frame[param])
@@ -444,10 +470,8 @@ class pyCGM():
                 axis_results.append(ret_axes)
 
 
-        # run angle functions in sequence
-        for index, func in enumerate(self.angle_funcs):
+        for index, func in enumerate(self.angle_funcs): # calculate angles
             angle_params = []
-
             for param in self.angle_func_parameters[index]:
                 if isinstance(param, slice): # marker data slice
                     angle_params.append(frame[param])
