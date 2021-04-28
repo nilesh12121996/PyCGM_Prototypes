@@ -262,14 +262,14 @@ class pyCGM():
 
         # get parameters
         params = []
-        for marker in [marker for marker in(markers or [])]:
-            params.append(self.marker(marker))
-        for measurement in [measurement for measurement in(measurements or [])]:
-            params.append(self.measurement(measurement))
-        for axis in [axis for axis in(axes or [])]:
-            params.append(self.axis(axis))
-        for angle in [angle for angle in(angles or [])]:
-            params.append(self.angle(angle))
+        for marker_name in [marker_name for marker_name in(markers or [])]:
+            params.append(self.marker(marker_name))
+        for measurement_name in [measurement_name for measurement_name in(measurements or [])]:
+            params.append(self.measurement(measurement_name))
+        for axis_name in [axis_name for axis_name in(axes or [])]:
+            params.append(self.axis(axis_name))
+        for angle_name in [angle_name for angle_name in(angles or [])]:
+            params.append(self.angle(angle_name))
 
         if returns_axes is not None: # extend axes and update
             self.axis_funcs.append(func)
@@ -278,7 +278,7 @@ class pyCGM():
             self.axis_result_mapping[function] = returns_axes
             self.axis_keys.extend(returns_axes)
             self.num_axes = len(list(chain(*self.axis_result_mapping.values())))
-            self.axis_mapping = {axis: index for index, axis in enumerate(self.axis_keys)}
+            self.axis_mapping = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
             self.num_axis_floats_per_frame = self.num_axes * 16
             self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
             
@@ -292,7 +292,7 @@ class pyCGM():
             self.angle_result_mapping[function] = returns_angles
             self.angle_keys.extend(returns_angles)
             self.num_angles = len(list(chain(*self.angle_result_mapping.values())))
-            self.angle_mapping = {angle: index for index, angle in enumerate(self.angle_keys)}
+            self.angle_mapping = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
             self.num_angle_floats_per_frame = self.num_angles * 3
             self.angle_results_shape = (self.num_frames, self.num_angles, 3)
             
