@@ -99,10 +99,3 @@ class eyeballCGM(pyCGM):
         eyeball_r[:3, 3] = 1.0
 
         return np.array([eyeball_l, eyeball_r])
-
-
-
-
-
-
-
