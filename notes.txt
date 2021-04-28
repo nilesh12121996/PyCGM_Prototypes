@@ -1,0 +1,3 @@
+overall unit test with file diff
+rewrite the pelvis, hip center, hip JC, hip angle to understand
+or get up until hip axis if not hip angle

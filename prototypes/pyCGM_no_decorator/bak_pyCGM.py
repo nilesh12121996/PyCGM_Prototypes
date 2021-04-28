@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import chain
 import os
 import multiprocessing as mp
 import sys
@@ -24,18 +23,25 @@ class pyCGM():
 
         # some struct helper attributes
         self.num_frames = len(self.marker_data)
-        self.num_axes = len(self.default_axis_keys)
+        self.num_axes = len(self.axis_result_keys)
         self.num_axis_floats_per_frame = self.num_axes * 16
         self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
-        self.num_angles = len(self.default_angle_keys)
+        self.num_angles = len(self.angle_result_keys)
         self.num_angle_floats_per_frame = self.num_angles * 3
         self.angle_results_shape = (self.num_frames, self.num_angles, 3)
 
-        # map axes and angles so functions can use results of the current frame
-        self.axis_keys = self.default_axis_keys
-        self.angle_keys = self.default_angle_keys
+        # store these for later extension
+        self.axis_keys = self.axis_result_keys
+        self.angle_keys = self.angle_result_keys
+
+        # map axis indices for angle calcs
         self.axis_mapping = {axis: index for index, axis in enumerate(self.axis_keys)}
-        self.angle_mapping = {angle: index for index, angle in enumerate(self.angle_keys)}
+
+        # list of functions and their parameters
+        self.current_frame = 0
+
+        # list of functions whose custom parameters have been already set. this allows us to only lookup the @parameters decorator args just one time
+        self.funcs_already_known = []
 
         # add non-overridden default pycgm_calc funcs to funcs list
         self.axis_funcs = [func if not hasattr(self, func.__name__) else getattr(self, func.__name__) for func in CalcAxes().funcs]
@@ -45,42 +51,15 @@ class pyCGM():
         self.axis_func_mapping = {function.__name__: index for index, function in enumerate(self.axis_funcs)}
         self.angle_func_mapping = {function.__name__: index for index, function in enumerate(self.angle_funcs)}
 
-        # map function names to the axes they return
-        self.axis_result_mapping = {'pelvis_axis': ['Pelvis'],
-                                    'hip_axis': ['Hip'], 
-                                    'knee_axis': ['RKnee', 'LKnee'],
-                                    'ankle_axis': ['RAnkle', 'LAnkle'], 
-                                    'foot_axis': ['RFoot', 'LFoot'],
-                                    'head_axis': ['Head'],
-                                    'thorax_axis': ['Thorax'],
-                                    'clav_axis': ['RClav', 'LClav'],
-                                    'hum_axis': ['RHum', 'LHum'],
-                                    'rad_axis': ['RRad', 'LRad'],
-                                    'hand_axis': ['RHand', 'LHand']}
-
-        # map function names to the angles they return
-        self.angle_result_mapping = {'pelvis_angle': ['Pelvis'],
-                                     'hip_angle': ['RHip', 'LHip'],
-                                     'knee_angle': ['RKnee', 'LKnee'],
-                                     'ankle_angle': ['RAnkle', 'LAnkle'],
-                                     'foot_angle': ['RFoot', 'LFoot'],
-                                     'head_angle': ['Head'],
-                                     'thorax_angle': ['Thorax'],
-                                     'neck_angle': ['Neck'],
-                                     'spine_angle': ['Spine'],
-                                     'shoulder_angle': ['RShoulder', 'LShoulder'],
-                                     'elbow_angle': ['RElbow', 'LElbow'],
-                                     'wrist_angle': ['RWrist', 'LWrist']}
-
         # default required slices of axis functions
         self.axis_func_parameters = [
                                 [
                                     # pelvis_axis 
-                                    self.marker('RASI'),
-                                    self.marker('LASI'),
-                                    self.marker('RPSI'),
-                                    self.marker('LPSI'),
-                                    self.marker('SACR')
+                                    self.marker_mapping['RASI'],
+                                    self.marker_mapping['LASI'],
+                                    self.marker_mapping['RPSI'],
+                                    self.marker_mapping['LPSI'],
+                                    self.marker_mapping['SACR'] if 'SACR' in self.marker_mapping.keys() else None
                                 ],
 
                                 [
@@ -128,8 +107,8 @@ class pyCGM():
 
                                 [
                                     # pelvis_angle 
-                                    self.measurement('GCS'),
-                                    self.axis('Pelvis')
+                                    self.measurements['GCS'],
+                                    self.axis_mapping['Pelvis']
                                 ],
 
                                 [
@@ -177,149 +156,102 @@ class pyCGM():
                                 ]
                             ]
 
-    def marker(self, marker_name):
-        # retrieve the slice that corresponds to the given marker name
 
-        return self.marker_mapping[marker_name] if marker_name in self.marker_mapping.keys() else None
+    def parameters(*args):
+        # decorator parameters are keys
+        # finds key in either the marker, measurement, or axis results
+        # sets function parameters accordingly and calls it properly
 
-    def measurement(self, measurement_name):
-        # retrieve the value of the given measurement name
+        def decorator(func):
+            params = list(args)
 
-        return self.measurements[measurement_name] if measurement_name in self.measurements.keys() else None
+            @functools.wraps(func)
+            def set_required_markers(*args):
+                self = args[0]
 
-    def axis(self, axis_name):
-        # retrieve the axis results index of the given axis name
+                try: # find func index, add params to either axis or angle parameter list
+                    func_index = self.axis_func_mapping[func.__name__]
+                    param_mapping = self.axis_func_parameters
+                except KeyError:
+                    func_index = self.angle_func_mapping[func.__name__] 
+                    param_mapping = self.angle_func_parameters
 
-        return self.axis_mapping[axis_name] if axis_name in self.axis_mapping.keys() else None
+                if func not in self.funcs_already_known: # only search for parameters if they haven't already been set
+                    param_mapping[func_index] = [self.find(param) for param in params]
+                    self.funcs_already_known.append(func)
 
-    def angle(self, angle_name):
-        # retrieve the angle results index of the given angle name
+                func_params = [] # call the function properly
+                for param in param_mapping[func_index]:
+                    if isinstance(param, slice): # marker data slice
+                        func_params.append(self.marker_data[self.current_frame][param])
+                    elif isinstance(param, float) or isinstance(param, list): # measurement value
+                        func_params.append(param)
+                    elif isinstance(param, int): # axis mapping index
+                        func_params.append(self.current_axes[param])
+                    else:
+                        func_params.append(None)
+                return func(*func_params)
+            return set_required_markers
+        return decorator
 
-        return self.angle_mapping[angle_name] if angle_name in self.angle_mapping.keys() else None
+    def add_function(self, name, axes=None, angles=None):
+        # add a custom function to pycgm,
 
-    def modify_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
-        # modify an existing function's parameters and returned values
-        # used for overriding an existing function's parameters or returned results
+        # get func object
+        func = getattr(self, name)
 
-        if returns_axes is not None and returns_angles is not None:
-            sys.exit('{} must return either an axis or an angle, not both'.format(function))
+        if axes is not None and angles is not None:
+            sys.exit('{} must return either an axis or an angle, not both'.format(func))
+        if axes is None and angles is None:
+            sys.exit('{} must return a custom axis or angle. if the axis or angle already exists by default, just extend by using the @pyCGM.parameters decorator'.format(func))
 
-        # get parameters
-        params = []
-        for marker_name in [marker_name for marker_name in(markers or [])]:
-            params.append(self.marker(marker_name))
-        for measurement_name in [measurement_name for measurement_name in(measurements or [])]:
-            params.append(self.measurement(measurement_name))
-        for axis_name in [axis_name for axis_name in(axes or [])]:
-            params.append(self.axis(axis_name))
-        for angle_name in [angle_name for angle_name in(angles or [])]:
-            params.append(self.angle(angle_name))
-        
-        if isinstance(function, str): # make sure a function name is passed
-            if function in self.axis_func_mapping:
-                self.axis_funcs[self.axis_func_mapping[function]] = getattr(self, function)
-                self.axis_func_parameters[self.axis_func_mapping[function]] = params
-            elif function in self.angle_func_mapping:
-                self.angle_funcs[self.angle_func_mapping[function]] = getattr(self, function)
-                self.angle_func_parameters[self.angle_func_mapping[function]] = params
-            else:
-                sys.exit('Function {} not found'.format(function))
-        else:
-            sys.exit('Pass the name of the function as a string like so: \'{}\''.format(function.__name__))
-
-        # add returned axes, update
-        if returns_axes is not None:
-            self.axis_result_mapping[function] = returns_axes
-            self.num_axes = len(list(chain(*self.axis_result_mapping.values())))
-            self.axis_mapping = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
-            self.num_axis_floats_per_frame = self.num_axes * 16
-            self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
-
-        # add returned angles, update
-        if returns_angles is not None:
-            self.angle_result_mapping[function] = returns_angles
-            self.num_angles = len(list(chain(*self.angle_result_mapping.values())))
-            self.angle_mapping = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
-            self.num_angle_floats_per_frame = self.num_angles * 3
-            self.angle_results_shape = (self.num_frames, self.num_angles, 3)
-
-    def add_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
-        # add a custom function to pycgm
-
-
-        # get func object and name
-        if isinstance(function,str):
-            func_name = function
-            func = getattr(self, func_name)
-        elif callable(function):
-            func_name = function.__name__
-            func = function
-
-        if returns_axes is not None and returns_angles is not None:
-            sys.exit('{} must return either an axis or an angle, not both'.format(func_name))
-        if returns_axes is None and returns_angles is None:
-            sys.exit('{} must return a custom axis or angle. if the axis or angle already exists by default, just use self.modify_function()'.format(func_name))
-
-        # get parameters
-        params = []
-        for marker in [marker for marker in(markers or [])]:
-            params.append(self.marker(marker))
-        for measurement in [measurement for measurement in(measurements or [])]:
-            params.append(self.measurement(measurement))
-        for axis in [axis for axis in(axes or [])]:
-            params.append(self.axis(axis))
-        for angle in [angle for angle in(angles or [])]:
-            params.append(self.angle(angle))
-
-        if returns_axes is not None: # extend axes and update
+        # append to func list, update mapping, add empty parameters list for parameters decorator to append to
+        if axes is not None: # extend axes and update
             self.axis_funcs.append(func)
-            self.axis_func_mapping = {function.__name__: index for index, function in enumerate(self.axis_funcs)}
             self.axis_func_parameters.append([])
-            self.axis_result_mapping[function] = returns_axes
-            self.axis_keys.extend(returns_axes)
-            self.num_axes = len(list(chain(*self.axis_result_mapping.values())))
+            self.axis_func_mapping = {function.__name__: index for index, function in enumerate(self.axis_funcs)}
+            self.axis_keys.extend(axes)
+            self.num_axes = len(self.axis_keys)
             self.axis_mapping = {axis: index for index, axis in enumerate(self.axis_keys)}
             self.num_axis_floats_per_frame = self.num_axes * 16
             self.axis_results_shape = (self.num_frames, self.num_axes, 4, 4)
-            
-            # set parameters of new function
-            self.axis_func_parameters[self.axis_func_mapping[func_name]] = params
 
-        if returns_angles is not None: # extend angles and update 
+        if angles is not None: # extend angles and update 
             self.angle_funcs.append(func)
             self.angle_func_mapping = {function.__name__: index for index, function in enumerate(self.angle_funcs)}
-            self.angle_func_parameters.append([])
-            self.angle_result_mapping[function] = returns_angles
-            self.angle_keys.extend(returns_angles)
-            self.num_angles = len(list(chain(*self.angle_result_mapping.values())))
-            self.angle_mapping = {angle: index for index, angle in enumerate(self.angle_keys)}
-            self.num_angle_floats_per_frame = self.num_angles * 3
+            self.angle_keys.extend(angles)
+            self.num_angles = len(self.axis_keys)
+            self.num_angle_floats_per_frame = self.num_axes * 3
             self.angle_results_shape = (self.num_frames, self.num_angles, 3)
-            
-            # set parameters of new function
-            self.angle_func_parameters[self.angle_func_mapping[func_name]] = params
 
     @property
-    def default_angle_keys(self):
+    def angle_result_keys(self):
         # list of default angle result names
 
-        return ['Pelvis', 'RHip', 'LHip', 'RKnee', 'LKnee', 'RAnkle',
-                'LAnkle', 'RFoot', 'LFoot',
-                'Head', 'Thorax', 'Neck', 'Spine', 'RShoulder', 'LShoulder',
-                'RElbow', 'LElbow', 'RWrist', 'LWrist']
+        return ['Pelvis', 'R Hip', 'L Hip', 'R Knee', 'L Knee', 'R Ankle',
+                'L Ankle', 'R Foot', 'L Foot',
+                'Head', 'Thorax', 'Neck', 'Spine', 'R Shoulder', 'L Shoulder',
+                'R Elbow', 'L Elbow', 'R Wrist', 'L Wrist']
 
     @property
-    def default_axis_keys(self):
+    def axis_result_keys(self):
         # list of default axis result names
 
         return ['Pelvis', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
                 'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
 
+    def find(self, key):
+        value = None
+        for mapping in [self.marker_mapping, self.measurements, self.axis_mapping]:
+            try:
+                value = mapping[key] 
+            except KeyError:
+                continue
+        return value
 
 
     def check_robo_results_accuracy(self, axis_results):
         # test unstructured pelvis axes against existing csv output file
-        # this will be removed later
 
         actual_results = np.genfromtxt('SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
         pelvis_OXYZ = [row[58:70] for row in actual_results]
@@ -340,20 +272,16 @@ class pyCGM():
         # returns a structured array, indexed by result[optional frame slice or index][axis name]
 
         # uncomment to test against robo results pelvis
-        # self.check_robo_results_accuracy(axis_results.reshape(self.axis_results_shape))
+        # check_robo_results_accuracy(axis_results.reshape(self.axis_results_shape))
 
-        axis_result_keys = list(chain(*self.axis_result_mapping.values()))
-        axis_row_dtype = np.dtype([(key, 'f4', (4, 4)) for key in axis_result_keys])
-
+        axis_row_dtype = np.dtype([(name, 'f4', (4, 4)) for name in self.axis_keys])
         return np.array([tuple(frame) for frame in axis_results.reshape(self.axis_results_shape)], dtype=axis_row_dtype)
 
     def structure_trial_angles(self, angle_results):
         # takes a flat array of floats that represent the 3x1 angles at each frame
         # returns a structured array, indexed by result[optional frame slice or index][angle name]
 
-        angle_result_keys = list(chain(*self.angle_result_mapping.values()))
-        angle_row_dtype = np.dtype([(key, 'f4', (3,)) for key in angle_result_keys])
-
+        angle_row_dtype = np.dtype([(name, 'f4', (3,)) for name in self.angle_keys])
         return np.array([tuple(frame) for frame in angle_results.reshape(self.angle_results_shape)], dtype=angle_row_dtype)
 
     def multi_run(self, cores=None):
@@ -400,10 +328,13 @@ class pyCGM():
         if shared_angles is not None:  # multiprocessing, write to shared memory
             shared_axes = np.frombuffer(shared_axes, dtype=np.float32)
             shared_angles = np.frombuffer(shared_angles, dtype=np.float32)
+            self.current_frame = index_offset # for the decorator
 
             for frame in frames:
                 flat_axis_results = np.append(flat_axis_results, self.calc(frame)[0].flatten())
                 flat_angle_results = np.append(flat_angle_results, self.calc(frame)[1].flatten())
+                self.current_frame += 1 # for the decorator
+
 
             shared_axes[index_offset * axis_results_size: index_end * axis_results_size] = flat_axis_results
             shared_angles[index_offset * angle_results_size: index_end * angle_results_size] = flat_angle_results
@@ -412,6 +343,7 @@ class pyCGM():
             for frame in self.marker_data:
                 flat_axis_results = np.append(flat_axis_results, self.calc(frame)[0].flatten())
                 flat_angle_results = np.append(flat_angle_results, self.calc(frame)[1].flatten())
+                self.current_frame += 1 # for the decorator 
 
             # structure flat axis and angle results
             self.axes = self.structure_trial_axes(flat_axis_results)
@@ -420,11 +352,12 @@ class pyCGM():
     def calc(self, frame):
         axis_results = []
         angle_results = []
-        
-        # run axis functions in sequence
-        for index, func in enumerate(self.axis_funcs):
-            axis_params = []
 
+        for index, func in enumerate(self.axis_funcs): # calculate angles
+            # old way: ret_axes = func(*[frame[req_slice] if isinstance(req_slice, slice) else req_slice for req_slice in self.axis_func_parameters[index]])
+            # ^ did not account for axis or angle calcs requiring other axes
+
+            axis_params = []
             for param in self.axis_func_parameters[index]:
                 if isinstance(param, slice): # marker data slice
                     axis_params.append(frame[param])
@@ -443,11 +376,10 @@ class pyCGM():
             else:
                 axis_results.append(ret_axes)
 
+            self.current_axes = axis_results # for the decorator
 
-        # run angle functions in sequence
-        for index, func in enumerate(self.angle_funcs):
+        for index, func in enumerate(self.angle_funcs): # calculate angles
             angle_params = []
-
             for param in self.angle_func_parameters[index]:
                 if isinstance(param, slice): # marker data slice
                     angle_params.append(frame[param])
