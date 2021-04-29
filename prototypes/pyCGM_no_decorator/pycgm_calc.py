@@ -116,9 +116,9 @@ class CalcAngles():
         )
     )
 
-        alpha = 180.0 * alpha / pi
-        beta = 180.0 * beta / pi
-        gamma = 180.0 * gamma / pi
+        alpha = 180.0 * alpha / math.pi
+        beta = 180.0 * beta / math.pi
+        gamma = 180.0 * gamma / math.pi
 
         angle = [alpha, beta, gamma]
         return np.asarray(angle)
