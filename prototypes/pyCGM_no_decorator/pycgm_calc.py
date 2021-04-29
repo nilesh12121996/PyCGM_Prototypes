@@ -1296,7 +1296,7 @@ class CalcAngles():
 
         return angle
 
-    def shoulder_angle(self, axis_p, axis_d):
+    def shoulder_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Shoulder angle calculation.
 
         This function takes in two axes and returns three angles and uses the
@@ -1344,40 +1344,74 @@ class CalcAngles():
         # gamma is adduction / abduction
         # alpha is internal / external rotation
 
-        # this is shoulder angle calculation
+        # this is the right shoulder angle calculation
         alpha = np.arcsin(
-                (axis_d[2][0] * axis_p[0][0])
-                + (axis_d[2][1] * axis_p[0][1])
-                + (axis_d[2][2] * axis_p[0][2])
+                (r_axis_d[2][0] * r_axis_p[0][0])
+                + (r_axis_d[2][1] * r_axis_p[0][1])
+                + (r_axis_d[2][2] * r_axis_p[0][2])
         )
 
         beta = np.arctan2(
             -1 * (
-                (axis_d[2][0] * axis_p[1][0])
-                + (axis_d[2][1] * axis_p[1][1])
-                + (axis_d[2][2] * axis_p[1][2])
+                (r_axis_d[2][0] * r_axis_p[1][0])
+                + (r_axis_d[2][1] * r_axis_p[1][1])
+                + (r_axis_d[2][2] * r_axis_p[1][2])
             ), (
-                (axis_d[2][0] * axis_p[2][0])
-                + (axis_d[2][1] * axis_p[2][1])
-                + (axis_d[2][2] * axis_p[2][2])
+                (r_axis_d[2][0] * r_axis_p[2][0])
+                + (r_axis_d[2][1] * r_axis_p[2][1])
+                + (r_axis_d[2][2] * r_axis_p[2][2])
             )
         )
 
         gamma = np.arctan2(
             -1 * (
-                (axis_d[1][0] * axis_p[0][0])
-                + (axis_d[1][1] * axis_p[0][1])
-                + (axis_d[1][2] * axis_p[0][2])
+                (r_axis_d[1][0] * r_axis_p[0][0])
+                + (r_axis_d[1][1] * r_axis_p[0][1])
+                + (r_axis_d[1][2] * r_axis_p[0][2])
             ), (
-                (axis_d[0][0] * axis_p[0][0])
-                + (axis_d[0][1] * axis_p[0][1])
-                + (axis_d[0][2] * axis_p[0][2])
+                (r_axis_d[0][0] * r_axis_p[0][0])
+                + (r_axis_d[0][1] * r_axis_p[0][1])
+                + (r_axis_d[0][2] * r_axis_p[0][2])
             ),
         )
 
-        angle = [180.0 * alpha / pi, 180.0 * beta / pi, 180.0 * gamma / pi]
+        right_angle = [180.0 * alpha / pi, 180.0 * beta / pi, 180.0 * gamma / pi]
 
-        return angle
+        # this is the left shoulder angle calculation
+        alpha = np.arcsin(
+                (l_axis_d[2][0] * l_axis_p[0][0])
+                + (l_axis_d[2][1] * l_axis_p[0][1])
+                + (l_axis_d[2][2] * l_axis_p[0][2])
+        )
+
+        beta = np.arctan2(
+            -1 * (
+                (l_axis_d[2][0] * l_axis_p[1][0])
+                + (l_axis_d[2][1] * l_axis_p[1][1])
+                + (l_axis_d[2][2] * l_axis_p[1][2])
+            ), (
+                (l_axis_d[2][0] * l_axis_p[2][0])
+                + (l_axis_d[2][1] * l_axis_p[2][1])
+                + (l_axis_d[2][2] * l_axis_p[2][2])
+            )
+        )
+
+        gamma = np.arctan2(
+            -1 * (
+                (l_axis_d[1][0] * l_axis_p[0][0])
+                + (l_axis_d[1][1] * l_axis_p[0][1])
+                + (l_axis_d[1][2] * l_axis_p[0][2])
+            ), (
+                (l_axis_d[0][0] * l_axis_p[0][0])
+                + (l_axis_d[0][1] * l_axis_p[0][1])
+                + (l_axis_d[0][2] * l_axis_p[0][2])
+            ),
+        )
+
+        left_angle = [180.0 * alpha / pi, 180.0 * beta / pi, 180.0 * gamma / pi]
+
+
+        return np.array([right_angle, left_angle])
 
     def elbow_angle(self, axis_p, axis_d):
         r"""Normal angle calculation.
