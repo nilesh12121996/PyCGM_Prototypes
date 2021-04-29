@@ -2204,9 +2204,6 @@ class CalcAngles():
         return np.array([right_angles, left_angles])
 
 
-class CalcUtils():
-
-
 class CalcUtils:
     @staticmethod
     def rotmat(x=0, y=0, z=0):
