@@ -118,21 +118,21 @@ class pyCGM():
 
             [
                 # knee_axis
-                self.axis('Hip'),
-                self.measurement('RightKneeWidth'),
-                self.measurement('LeftKneeWidth')
+                self.Axis(self.axis_index('Hip')),
+                self.Measurement(self.measurement_value('RightKneeWidth')),
+                self.Measurement(self.measurement_value('LeftKneeWidth')),
             ],
 
             [
-                self.marker('RTIB'),
-                self.marker('LTIB'),
-                self.marker('RANK'),
-                self.marker('LANK'),
-                self.axis('knee'),
-                self.measurement('RightAnkleWidth'),
-                self.measurement('LeftAnkleWidth'),
-                self.measurement('RightTibialTorsion'),
-                self.measurement('LeftTibialTorsion'),
+                self.Marker(self.marker_slice('RTIB')),
+                self.Marker(self.marker_slice('LTIB')),
+                self.Marker(self.marker_slice('RANK')),
+                self.Marker(self.marker_slice('LANK')),
+                self.Axis(self.axis_index('knee')),
+                self.Measurement(self.measurement_value('RightAnkleWidth')),
+                self.Measurement(self.measurement_value('LeftAnkleWidth')),
+                self.Measurement(self.measurement_value('RightTibialTorsion')),
+                self.Measurement(self.measurement_value('LeftTibialTorsion')),
             ],
 
             [
