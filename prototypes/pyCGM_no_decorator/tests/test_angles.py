@@ -1,5 +1,5 @@
 import unittest
-import pycgm_calc as angles
+import pycgm_calc as angles # Need to fix import not to require file locally.
 import numpy as np
 import pytest
 
