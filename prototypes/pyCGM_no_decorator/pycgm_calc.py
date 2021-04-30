@@ -969,549 +969,44 @@ class CalcAngles():
     def hip_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-        This function takes in two axes and returns three angles and uses the
-        inverse Euler rotation matrix in YXZ order.
-
-        Returns the angles in degrees.
-
-        Parameters
-        ----------
-        r_axis_p : list
-            Shows the unit vector of the right proximal axis
-        r_axis_d : list
-            Shows the unit vector of the right distal axis
-        l_axis_p : list
-            Shows the unit vector of the right proximal axis
-        l_axis_d : list
-            Shows the unit vector of the right distal axis
-
-        Returns
-        -------
-        angle : list
-            Returns the gamma, beta, alpha angles in degrees in a 1x3 corresponding list.
-
-        Notes
-        -----
-        As we use arcsin we have to care about if the angle is in area between -pi/2 to pi/2
-
-        :math:`\alpha = \arcsin{(-axis\_d_{z} \cdot axis\_p_{y})}`
-
-        If alpha is between -pi/2 and pi/2
-
-        :math:`\beta = \arctan2{((axis\_d_{z} \cdot axis\_p_{x}), axis\_d_{z} \cdot axis\_p_{z})}`
-
-        :math:`\gamma = \arctan2{((axis\_d_{y} \cdot axis\_p_{y}), axis\_d_{x} \cdot axis\_p_{y})}`
-
-        Otherwise
-
-        :math:`\beta = \arctan2{(-(axis\_d_{z} \cdot axis\_p_{x}), axis\_d_{z} \cdot axis\_p_{z})}`
-
-        :math:`\gamma = \arctan2{(-(axis\_d_{y} \cdot axis\_p_{y}), axis\_d_{x} \cdot axis\_p_{y})}`
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from .axis import get_angle
-        >>> r_axis_p = [[ 0.04,   0.99,  0.06, 429.67],
-        ...         [ 0.99, -0.04, -0.05, 275.15],
-        ...         [-0.05,  0.07, -0.99, 1452.95],
-        ...         [0, 0, 0, 1]]
-        >>> r_axis_d = [[-0.18, -0.98, -0.02, 64.09],
-        ...         [ 0.71, -0.11,  -0.69, 275.83],
-        ...         [ 0.67, -0.14,   0.72, 1463.78],
-        ...         [0, 0, 0, 1]]
-        >>> l_axis_p = [[ 0.04,   0.99,  0.06, 429.67],
-        ...         [ 0.99, -0.04, -0.05, 275.15],
-        ...         [-0.05,  0.07, -0.99, 1452.95],
-        ...         [0, 0, 0, 1]]
-        >>> l_axis_d = [[-0.18, -0.98, -0.02, 64.09],
-        ...         [ 0.71, -0.11,  -0.69, 275.83],
-        ...         [ 0.67, -0.14,   0.72, 1463.78],
-        ...         [0, 0, 0, 1]]
-        >>> np.around(get_angle(r_axis_p, r_axis_d, l_axis_p, l_axis_d), 2)
-        array([[-174.82,  -39.26,  100.54],
-        [-174.82,  -39.26,  100.54]])
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
-
-        ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
-
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
-
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
-                ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
-                ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
 
     def knee_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
-
-        ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
-
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
-
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
-                ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
-                ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
 
     def ankle_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
-
-        ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
-
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
-
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
-                ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
-                ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
 
     def foot_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
-
-        ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
-
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
-
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
-                ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
-                ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
 
@@ -1646,134 +1141,18 @@ class CalcAngles():
     def thorax_angle(self, axis_p, axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
 
-        ang = (
-            (-1 * axis_d[2][0] * axis_p[1][0])
-            + (-1 * axis_d[2][1] * axis_p[1][1])
-            + (-1 * axis_d[2][2] * axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (axis_d[2][0] * axis_p[0][0])
-                + (axis_d[2][1] * axis_p[0][1])
-                + (axis_d[2][2] * axis_p[0][2]),
-
-                (axis_d[2][0] * axis_p[2][0])
-                + (axis_d[2][1] * axis_p[2][1])
-                + (axis_d[2][2] * axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (axis_d[1][0] * axis_p[1][0])
-                + (axis_d[1][1] * axis_p[1][1])
-                + (axis_d[1][2] * axis_p[1][2]),
-
-                (axis_d[0][0] * axis_p[1][0])
-                + (axis_d[0][1] * axis_p[1][1])
-                + (axis_d[0][2] * axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (axis_d[2][0] * axis_p[0][0])
-                    + (axis_d[2][1] * axis_p[0][1])
-                    + (axis_d[2][2] * axis_p[0][2])
-                ),
-                (axis_d[2][0] * axis_p[2][0])
-                + (axis_d[2][1] * axis_p[2][1])
-                + (axis_d[2][2] * axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (axis_d[1][0] * axis_p[1][0])
-                    + (axis_d[1][1] * axis_p[1][1])
-                    + (axis_d[1][2] * axis_p[1][2])
-                ),
-                (axis_d[0][0] * axis_p[1][0])
-                + (axis_d[0][1] * axis_p[1][1])
-                + (axis_d[0][2] * axis_p[1][2])
-            )
-
-        angle = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        return angle
+        return np.array(self.get_angle(axis_p, axis_d))
 
     def neck_angle(self, axis_p, axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
 
-        ang = (
-            (-1 * axis_d[2][0] * axis_p[1][0])
-            + (-1 * axis_d[2][1] * axis_p[1][1])
-            + (-1 * axis_d[2][2] * axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (axis_d[2][0] * axis_p[0][0])
-                + (axis_d[2][1] * axis_p[0][1])
-                + (axis_d[2][2] * axis_p[0][2]),
-
-                (axis_d[2][0] * axis_p[2][0])
-                + (axis_d[2][1] * axis_p[2][1])
-                + (axis_d[2][2] * axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (axis_d[1][0] * axis_p[1][0])
-                + (axis_d[1][1] * axis_p[1][1])
-                + (axis_d[1][2] * axis_p[1][2]),
-
-                (axis_d[0][0] * axis_p[1][0])
-                + (axis_d[0][1] * axis_p[1][1])
-                + (axis_d[0][2] * axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (axis_d[2][0] * axis_p[0][0])
-                    + (axis_d[2][1] * axis_p[0][1])
-                    + (axis_d[2][2] * axis_p[0][2])
-                ),
-                (axis_d[2][0] * axis_p[2][0])
-                + (axis_d[2][1] * axis_p[2][1])
-                + (axis_d[2][2] * axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (axis_d[1][0] * axis_p[1][0])
-                    + (axis_d[1][1] * axis_p[1][1])
-                    + (axis_d[1][2] * axis_p[1][2])
-                ),
-                (axis_d[0][0] * axis_p[1][0])
-                + (axis_d[0][1] * axis_p[1][1])
-                + (axis_d[0][2] * axis_p[1][2])
-            )
-
-        angle = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        return angle
+        return np.array(self.get_angle(axis_p, axis_d))
 
     def spine_angle(self, axis_p, axis_d):
         r"""Spine angle calculation.
@@ -1962,136 +1341,85 @@ class CalcAngles():
     def elbow_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
         """
-        # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
-
-        ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
-        )
-
-        alpha = np.nan
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
-
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
-
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
-                ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
-                ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
-            )
-
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
 
     def wrist_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Normal angle calculation.
 
-            Please refer to the hip_angle function for documentation.
+            Please refer to the static get_angle function for documentation.
+        """
+        
+        right_angles = self.get_angle(r_axis_p, r_axis_d)
+        left_angles = self.get_angle(l_axis_p, l_axis_d)
+
+        return np.array([right_angles, left_angles])
+    
+    @staticmethod
+    def get_angle(axis_p, axis_d):
+        r"""Normal angle calculation.
+
+        This function takes in two axes and returns three angles and uses the
+        inverse Euler rotation matrix in YXZ order.
+
+        Returns the angles in degrees.
+
+        Parameters
+        ----------
+        axis_p : list
+            Shows the unit vector of axis_p, the position of the proximal axis.
+        axis_d : list
+            Shows the unit vector of axis_d, the position of the distal axis.
+
+        Returns
+        -------
+        angle : list
+            Returns the gamma, beta, alpha angles in degrees in a 1x3 corresponding list.
+
+        Notes
+        -----
+        As we use arcsin we have to care about if the angle is in area between -pi/2 to pi/2
+        
+        :math:`\alpha = \arcsin{(-axis\_d_{z} \cdot axis\_p_{y})}`
+
+        If alpha is between -pi/2 and pi/2
+
+        :math:`\beta = \arctan2{((axis\_d_{z} \cdot axis\_p_{x}), axis\_d_{z} \cdot axis\_p_{z})}`
+        
+        :math:`\gamma = \arctan2{((axis\_d_{y} \cdot axis\_p_{y}), axis\_d_{x} \cdot axis\_p_{y})}`
+
+        Otherwise
+
+        :math:`\beta = \arctan2{(-(axis\_d_{z} \cdot axis\_p_{x}), axis\_d_{z} \cdot axis\_p_{z})}`
+
+        :math:`\gamma = \arctan2{(-(axis\_d_{y} \cdot axis\_p_{y}), axis\_d_{x} \cdot axis\_p_{y})}`
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from .axis import get_angle
+        >>> axis_p = [[ 0.04,   0.99,  0.06, 429.67],
+        ...         [ 0.99, -0.04, -0.05, 275.15],
+        ...         [-0.05,  0.07, -0.99, 1452.95],
+        ...         [0, 0, 0, 1]]
+        >>> axis_d = [[-0.18, -0.98, -0.02, 64.09],
+        ...         [ 0.71, -0.11,  -0.69, 275.83],
+        ...         [ 0.67, -0.14,   0.72, 1463.78],
+        ...         [0, 0, 0, 1]]
+        >>> np.around(get_angle(axis_p, axis_d), 2)
+        array([-174.82,  -39.26,  100.54])
         """
         # this is the angle calculation which order is Y-X-Z, alpha is the abdcution angle.
 
         ang = (
-            (-1 * r_axis_d[2][0] * r_axis_p[1][0])
-            + (-1 * r_axis_d[2][1] * r_axis_p[1][1])
-            + (-1 * r_axis_d[2][2] * r_axis_p[1][2])
+            (-1 * axis_d[2][0] * axis_p[1][0])
+            + (-1 * axis_d[2][1] * axis_p[1][1])
+            + (-1 * axis_d[2][2] * axis_p[1][2])
         )
 
         alpha = np.nan
@@ -2103,105 +1431,49 @@ class CalcAngles():
 
         if -1.57079633 < alpha < 1.57079633:
             beta = np.arctan2(
-                (r_axis_d[2][0] * r_axis_p[0][0])
-                + (r_axis_d[2][1] * r_axis_p[0][1])
-                + (r_axis_d[2][2] * r_axis_p[0][2]),
+                (axis_d[2][0] * axis_p[0][0])
+                + (axis_d[2][1] * axis_p[0][1])
+                + (axis_d[2][2] * axis_p[0][2]),
 
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
+                (axis_d[2][0] * axis_p[2][0])
+                + (axis_d[2][1] * axis_p[2][1])
+                + (axis_d[2][2] * axis_p[2][2])
             )
 
             gamma = np.arctan2(
-                (r_axis_d[1][0] * r_axis_p[1][0])
-                + (r_axis_d[1][1] * r_axis_p[1][1])
-                + (r_axis_d[1][2] * r_axis_p[1][2]),
+                (axis_d[1][0] * axis_p[1][0])
+                + (axis_d[1][1] * axis_p[1][1])
+                + (axis_d[1][2] * axis_p[1][2]),
 
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
+                (axis_d[0][0] * axis_p[1][0])
+                + (axis_d[0][1] * axis_p[1][1])
+                + (axis_d[0][2] * axis_p[1][2])
             )
         else:
             beta = np.arctan2(
                 -1 * (
-                    (r_axis_d[2][0] * r_axis_p[0][0])
-                    + (r_axis_d[2][1] * r_axis_p[0][1])
-                    + (r_axis_d[2][2] * r_axis_p[0][2])
+                    (axis_d[2][0] * axis_p[0][0])
+                    + (axis_d[2][1] * axis_p[0][1])
+                    + (axis_d[2][2] * axis_p[0][2])
                 ),
-                (r_axis_d[2][0] * r_axis_p[2][0])
-                + (r_axis_d[2][1] * r_axis_p[2][1])
-                + (r_axis_d[2][2] * r_axis_p[2][2])
+                    (axis_d[2][0] * axis_p[2][0])
+                    + (axis_d[2][1] * axis_p[2][1])
+                    + (axis_d[2][2] * axis_p[2][2])
             )
             gamma = np.arctan2(
                 -1 * (
-                    (r_axis_d[1][0] * r_axis_p[1][0])
-                    + (r_axis_d[1][1] * r_axis_p[1][1])
-                    + (r_axis_d[1][2] * r_axis_p[1][2])
+                    (axis_d[1][0] * axis_p[1][0])
+                    + (axis_d[1][1] * axis_p[1][1])
+                    + (axis_d[1][2] * axis_p[1][2])
                 ),
-                (r_axis_d[0][0] * r_axis_p[1][0])
-                + (r_axis_d[0][1] * r_axis_p[1][1])
-                + (r_axis_d[0][2] * r_axis_p[1][2])
+                    (axis_d[0][0] * axis_p[1][0])
+                    + (axis_d[0][1] * axis_p[1][1])
+                    + (axis_d[0][2] * axis_p[1][2])
             )
 
-        right_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
+        angle = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
 
-        ang = (
-            (-1 * l_axis_d[2][0] * l_axis_p[1][0])
-            + (-1 * l_axis_d[2][1] * l_axis_p[1][1])
-            + (-1 * l_axis_d[2][2] * l_axis_p[1][2])
-        )
-
-        if -1 <= ang <= 1:
-            alpha = np.arcsin(ang)
-
-        # check the abduction angle is in the area between -pi/2 and pi/2
-        # beta is flextion angle, gamma is rotation angle
-
-        if -1.57079633 < alpha < 1.57079633:
-            beta = np.arctan2(
-                (l_axis_d[2][0] * l_axis_p[0][0])
-                + (l_axis_d[2][1] * l_axis_p[0][1])
-                + (l_axis_d[2][2] * l_axis_p[0][2]),
-
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-
-            gamma = np.arctan2(
-                (l_axis_d[1][0] * l_axis_p[1][0])
-                + (l_axis_d[1][1] * l_axis_p[1][1])
-                + (l_axis_d[1][2] * l_axis_p[1][2]),
-
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-        else:
-            beta = np.arctan2(
-                -1 * (
-                    (l_axis_d[2][0] * l_axis_p[0][0])
-                    + (l_axis_d[2][1] * l_axis_p[0][1])
-                    + (l_axis_d[2][2] * l_axis_p[0][2])
-                ),
-                (l_axis_d[2][0] * l_axis_p[2][0])
-                + (l_axis_d[2][1] * l_axis_p[2][1])
-                + (l_axis_d[2][2] * l_axis_p[2][2])
-            )
-            gamma = np.arctan2(
-                -1 * (
-                    (l_axis_d[1][0] * l_axis_p[1][0])
-                    + (l_axis_d[1][1] * l_axis_p[1][1])
-                    + (l_axis_d[1][2] * l_axis_p[1][2])
-                ),
-                (l_axis_d[0][0] * l_axis_p[1][0])
-                + (l_axis_d[0][1] * l_axis_p[1][1])
-                + (l_axis_d[0][2] * l_axis_p[1][2])
-            )
-
-        left_angles = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
-
-        return np.array([right_angles, left_angles])
+        return angle
 
 
 class CalcUtils:
