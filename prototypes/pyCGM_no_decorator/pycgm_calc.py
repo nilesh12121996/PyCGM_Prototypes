@@ -971,7 +971,7 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
@@ -982,7 +982,7 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
@@ -993,7 +993,7 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
@@ -1004,7 +1004,7 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
@@ -1344,7 +1344,7 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
@@ -1355,12 +1355,12 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
-        
+
         right_angles = self.get_angle(r_axis_p, r_axis_d)
         left_angles = self.get_angle(l_axis_p, l_axis_d)
 
         return np.array([right_angles, left_angles])
-    
+
     @staticmethod
     def get_angle(axis_p, axis_d):
         r"""Normal angle calculation.
@@ -1385,13 +1385,13 @@ class CalcAngles():
         Notes
         -----
         As we use arcsin we have to care about if the angle is in area between -pi/2 to pi/2
-        
+
         :math:`\alpha = \arcsin{(-axis\_d_{z} \cdot axis\_p_{y})}`
 
         If alpha is between -pi/2 and pi/2
 
         :math:`\beta = \arctan2{((axis\_d_{z} \cdot axis\_p_{x}), axis\_d_{z} \cdot axis\_p_{z})}`
-        
+
         :math:`\gamma = \arctan2{((axis\_d_{y} \cdot axis\_p_{y}), axis\_d_{x} \cdot axis\_p_{y})}`
 
         Otherwise
@@ -1457,9 +1457,9 @@ class CalcAngles():
                     + (axis_d[2][1] * axis_p[0][1])
                     + (axis_d[2][2] * axis_p[0][2])
                 ),
-                    (axis_d[2][0] * axis_p[2][0])
-                    + (axis_d[2][1] * axis_p[2][1])
-                    + (axis_d[2][2] * axis_p[2][2])
+                (axis_d[2][0] * axis_p[2][0])
+                + (axis_d[2][1] * axis_p[2][1])
+                + (axis_d[2][2] * axis_p[2][2])
             )
             gamma = np.arctan2(
                 -1 * (
@@ -1467,9 +1467,9 @@ class CalcAngles():
                     + (axis_d[1][1] * axis_p[1][1])
                     + (axis_d[1][2] * axis_p[1][2])
                 ),
-                    (axis_d[0][0] * axis_p[1][0])
-                    + (axis_d[0][1] * axis_p[1][1])
-                    + (axis_d[0][2] * axis_p[1][2])
+                (axis_d[0][0] * axis_p[1][0])
+                + (axis_d[0][1] * axis_p[1][1])
+                + (axis_d[0][2] * axis_p[1][2])
             )
 
         angle = [180.0*beta/pi, 180.0*alpha / pi, 180.0*gamma/pi]
