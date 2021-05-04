@@ -11,7 +11,7 @@ if sys.version_info[0] == 2:
     print("Using python 2 c3d loader")
 
 else:
-    import c3dpy3 as c3d
+    from . import c3dpy3 as c3d
     pyver = 3
     print("Using python 3 c3d loader - c3dpy3")
 
@@ -165,6 +165,7 @@ def loadVSK(filename, dict=True):
         return vsk
 
     return [vsk_keys, vsk_data]
+
 
 def writeKinetics(CoM_output, kinetics):
     """Uses numpy.save to write kinetics data as an .npy file.
