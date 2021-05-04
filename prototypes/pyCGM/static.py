@@ -7,100 +7,9 @@ Created on Tue Jul 28 16:55:25 2015
 @author: cadop
 """
 import numpy as np
-from math import sin, cos, acos, sqrt, radians
 
-def rotmat(x=0,y=0,z=0):
-    """Rotation Matrix function
 
-    This function creates and returns a rotation matrix.
-
-    Parameters
-    ----------
-    x,y,z : float, optional
-        Angle, which will be converted to radians, in
-        each respective axis to describe the rotations.
-        The default is 0 for each unspecified angle.
-
-    Returns
-    -------
-    Rxyz : array
-        The product of the matrix multiplication.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import rotmat
-    >>> rotmat() #doctest: +NORMALIZE_WHITESPACE
-    [[1.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0],
-    [0.0, 0.0, 1.0]]
-    >>> x = 0.5
-    >>> y = 0.3
-    >>> z = 0.8
-    >>> np.around(rotmat(x,y,z), 2)
-    array([[ 1.  , -0.01,  0.01],
-           [ 0.01,  1.  , -0.01],
-           [-0.01,  0.01,  1.  ]])
-    >>> x = 0.5
-    >>> np.around(rotmat(x), 2)
-    array([[ 1.  ,  0.  ,  0.  ],
-           [ 0.  ,  1.  , -0.01],
-           [ 0.  ,  0.01,  1.  ]])
-    >>> x = 1
-    >>> y = 1
-    >>> np.around(rotmat(x,y), 2)
-    array([[ 1.  ,  0.  ,  0.02],
-           [ 0.  ,  1.  , -0.02],
-           [-0.02,  0.02,  1.  ]])
-    """
-    x = radians(x)
-    y = radians(y)
-    z = radians(z)
-    Rx = [ [1,0,0],[0,cos(x),sin(x)*-1],[0,sin(x),cos(x)] ]
-    Ry = [ [cos(y),0,sin(y)],[0,1,0],[sin(y)*-1,0,cos(y)] ]
-    Rz = [ [cos(z),sin(z)*-1,0],[sin(z),cos(z),0],[0,0,1] ]
-
-    Rxy = matrixmult(Rx,Ry)
-    Rxyz = matrixmult(Rxy,Rz)
-
-    Ryx = matrixmult(Ry,Rx)
-    Ryxz = matrixmult(Ryx,Rz)
-
-    return Rxyz
-
-def getDist(p0, p1):
-    """Get Distance function
-
-    This function calculates the distance between two 3-D positions.
-
-    Parameters
-    ----------
-    p0 : array
-        Position of first x, y, z coordinate.
-    p1 : array
-        Position of second x, y, z coordinate.
-
-    Returns
-    -------
-    float
-        The distance between positions p0 and p1.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import getDist
-    >>> p0 = [0,1,2]
-    >>> p1 = [1,2,3]
-    >>> np.around(getDist(p0,p1), 2)
-    1.73
-    >>> p0 = np.array([991.45, 741.95, 321.36])
-    >>> p1 = np.array([117.09, 142.24, 481.95])
-    >>> np.around(getDist(p0,p1), 2)
-    1072.36
-    """
-    return sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2 + (p0[2] - p1[2])**2)
-
-def getStatic(motionData,vsk,flat_foot=False,GCS=None):
+def get_static(motionData, vsk, flat_foot=False, GCS=None):
     """ Get Static Offset function
 
     Calculate the static offset angle values and return the values in radians
@@ -108,34 +17,35 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
     Parameters
     ----------
     motionData : dict
-        Dictionary of marker lists.
+                 Dictionary of marker lists.
     vsk : dict, optional
-        Dictionary of various attributes of the skeleton.
+          Dictionary of various attributes of the skeleton.
     flat_foot : boolean, optional
-        A boolean indicating if the feet are flat or not.
-        The default value is False.
+                A boolean indicating if the feet are flat or not.
+                The default value is False.
     GCS : array, optional
-        An array containing the Global Coordinate System.
-        If not provided, the default will be set to: [[1, 0, 0], [0, 1, 0], [0, 0, 1]].
+          An array containing the Global Coordinate System.
+          If not provided, the default will be set to: [[1, 0, 0], [0, 1, 0],
+          [0, 0, 1]].
 
     Returns
     -------
     calSM : dict
-        Dictionary containing various marker lists of offsets.
+            Dictionary containing various marker lists of offsets.
 
     Examples
     --------
-    >>> from .pycgmIO import loadC3D, loadVSK
-    >>> from .pycgmStatic import getStatic
+    >>> from pyCGM_Single.pycgmIO import loadC3D, loadVSK
+    >>> from .static import get_static
     >>> import os
-    >>> from .pyCGM_Helpers import getfilenames
+    >>> from pyCGM_Single.pyCGM_Helpers import getfilenames
     >>> fileNames=getfilenames(2)
     >>> c3dFile = fileNames[1]
     >>> vskFile = fileNames[2]
     >>> result = loadC3D(c3dFile)
     >>> data = result[0]
     >>> vskData = loadVSK(vskFile, False)
-    >>> result = getStatic(data,vskData,flat_foot=False)
+    >>> result = get_static(data,vskData,flat_foot=False)
     >>> result['Bodymass']
     75.0
     >>> result['RightKneeWidth']
@@ -152,21 +62,22 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
     calSM['MeanLegLength'] = (LeftLegLength+RightLegLength)/2.0
     calSM['Bodymass'] = vsk['Bodymass']
 
-    #Define the global coordinate system
-    if GCS == None: calSM['GCS'] = [[1,0,0],[0,1,0],[0,0,1]]
+    # Define the global coordinate system
+    if not GCS:
+        calSM['GCS'] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-    if vsk['LeftAsisTrocanterDistance'] != 0 and vsk['RightAsisTrocanterDistance'] != 0:
+    if vsk['LeftAsisTrocanterDistance'] and vsk['RightAsisTrocanterDistance']:
         calSM['L_AsisToTrocanterMeasure'] = vsk['LeftAsisTrocanterDistance']
         calSM['R_AsisToTrocanterMeasure'] = vsk['RightAsisTrocanterDistance']
     else:
-        calSM['R_AsisToTrocanterMeasure'] = ( 0.1288 * RightLegLength ) - 48.56
-        calSM['L_AsisToTrocanterMeasure'] = ( 0.1288 * LeftLegLength ) - 48.56
+        calSM['R_AsisToTrocanterMeasure'] = (0.1288 * RightLegLength) - 48.56
+        calSM['L_AsisToTrocanterMeasure'] = (0.1288 * LeftLegLength) - 48.56
 
-    if vsk['InterAsisDistance'] != 0:
+    if vsk['InterAsisDistance']:
         calSM['InterAsisDistance'] = vsk['InterAsisDistance']
     else:
         for frame in motionData:
-            iadCalc = IADcalculation(frame)
+            iadCalc = get_iad(frame['RASI'], frame['LASI'])
             IAD.append(iadCalc)
         InterAsisDistance = np.average(IAD)
         calSM['InterAsisDistance'] = InterAsisDistance
@@ -175,17 +86,17 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
         calSM['RightKneeWidth'] = vsk['RightKneeWidth']
         calSM['LeftKneeWidth'] = vsk['LeftKneeWidth']
 
-    except:
-        #no knee width
+    except Exception:
+        # no knee width
         calSM['RightKneeWidth'] = 0
         calSM['LeftKneeWidth'] = 0
 
-    if calSM['RightKneeWidth'] == 0:
+    if not calSM['RightKneeWidth']:
         if 'RMKN' in list(motionData[0].keys()):
-            #medial knee markers are available
+            # medial knee markers are available
             Rwidth = []
             Lwidth = []
-            #average each frame
+            # average each frame
             for frame in motionData:
                 RMKN = frame['RMKN']
                 LMKN = frame['LMKN']
@@ -193,8 +104,8 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
                 RKNE = frame['RKNE']
                 LKNE = frame['LKNE']
 
-                Rdst = getDist(RKNE,RMKN)
-                Ldst = getDist(LKNE,LMKN)
+                Rdst = np.linalg.norm(RKNE - RMKN)
+                Ldst = np.linalg.norm(LKNE - LMKN)
                 Rwidth.append(Rdst)
                 Lwidth.append(Ldst)
 
@@ -204,17 +115,17 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
         calSM['RightAnkleWidth'] = vsk['RightAnkleWidth']
         calSM['LeftAnkleWidth'] = vsk['LeftAnkleWidth']
 
-    except:
-        #no knee width
+    except Exception:
+        # no knee width
         calSM['RightAnkleWidth'] = 0
         calSM['LeftAnkleWidth'] = 0
 
-    if calSM['RightAnkleWidth'] == 0:
-        if 'RMKN' in list(motionData[0].keys()):
-            #medial knee markers are available
+    if not calSM['RightAnkleWidth']:
+        if 'RMKN' in motionData[0]:
+            # medial knee markers are available
             Rwidth = []
             Lwidth = []
-            #average each frame
+            # average each frame
             for frame in motionData:
                 RMMA = frame['RMMA']
                 LMMA = frame['LMMA']
@@ -222,22 +133,16 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
                 RANK = frame['RANK']
                 LANK = frame['LANK']
 
-                Rdst = getDist(RMMA,RANK)
-                Ldst = getDist(LMMA,LANK)
+                Rdst = np.linalg.norm(RMMA - RANK)
+                Ldst = np.linalg.norm(LMMA - LANK)
                 Rwidth.append(Rdst)
                 Lwidth.append(Ldst)
 
             calSM['RightAnkleWidth'] = sum(Rwidth)/len(Rwidth)
             calSM['LeftAnkleWidth'] = sum(Lwidth)/len(Lwidth)
 
-    #calSM['RightKneeWidth'] = vsk['RightKneeWidth']
-    #calSM['LeftKneeWidth'] = vsk['LeftKneeWidth']
-
-    #calSM['RightAnkleWidth'] = vsk['RightAnkleWidth']
-    #calSM['LeftAnkleWidth'] = vsk['LeftAnkleWidth']
-
     calSM['RightTibialTorsion'] = vsk['RightTibialTorsion']
-    calSM['LeftTibialTorsion'] =vsk['LeftTibialTorsion']
+    calSM['LeftTibialTorsion'] = vsk['LeftTibialTorsion']
 
     calSM['RightShoulderOffset'] = vsk['RightShoulderOffset']
     calSM['LeftShoulderOffset'] = vsk['LeftShoulderOffset']
@@ -251,22 +156,22 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
     calSM['LeftHandThickness'] = vsk['LeftHandThickness']
 
     for frame in motionData:
-        pelvis_origin,pelvis_axis,sacrum = pelvisJointCenter(frame)
-        hip_JC = hipJointCenter(frame,pelvis_origin,pelvis_axis[0],pelvis_axis[1],pelvis_axis[2],calSM)
-        knee_JC = kneeJointCenter(frame,hip_JC,0,vsk=calSM)
-        ankle_JC = ankleJointCenter(frame,knee_JC,0,vsk=calSM)
-        angle = staticCalculation(frame,ankle_JC,knee_JC,flat_foot,calSM)
-        head = headJC(frame)
-        headangle = staticCalculationHead(frame,head)
+        pelvis_origin, pelvis_axis, sacrum = pelvis_joint_center(frame)
+        hip = hip_joint_center(frame, pelvis_origin, pelvis_axis[0],
+                               pelvis_axis[1], pelvis_axis[2], calSM)
+        knee = knee_joint_center(frame, hip, 0, vsk=calSM)
+        ankle = ankle_joint_center(frame, knee, 0, vsk=calSM)
+        angle = get_static_angle(frame, ankle, knee, flat_foot, calSM)
+        head = head_joint_center(frame)
+        headangle = calculate_head_angle(head)
 
         static_offset.append(angle)
         head_offset.append(headangle)
 
+    static = np.average(static_offset, axis=0)
+    staticHead = np.average(head_offset)
 
-    static=np.average(static_offset,axis=0)
-    staticHead=np.average(head_offset)
-
-    calSM['RightStaticRotOff'] = static[0][0]*-1
+    calSM['RightStaticRotOff'] = -static[0][0]
     calSM['RightStaticPlantFlex'] = static[0][1]
     calSM['LeftStaticRotOff'] = static[1][0]
     calSM['LeftStaticPlantFlex'] = static[1][1]
@@ -274,80 +179,77 @@ def getStatic(motionData,vsk,flat_foot=False,GCS=None):
 
     return calSM
 
-def average(list):
-    """Average Calculation function
 
-    Calculates the average of the values in a given list or array.
-
-    Parameters
-    ----------
-    list : list
-        List or array of values.
-
-    Returns
-    -------
-    float
-        The mean of the list.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import average
-    >>> list = [1,2,3,4,5]
-    >>> average(list)
-    3.0
-    >>> list = np.array([93.82, 248.96, 782.62])
-    >>> np.around(average(list), 2)
-    375.13
-    """
-    i =0
-    total = 0.0
-    while(i <len(list)):
-        total = total + list[i]
-        i = i+1
-    return total / len(list)
-
-def IADcalculation(frame):
-    """Inter ASIS Distance (IAD) Calculation function
+def get_iad(rasi, lasi):
+    r"""Get the Inter ASIS Distance (IAD)
 
     Calculates the Inter ASIS Distance from a given frame.
-    Markers used: RASI, LASI
+
+    Given the markers RASI and LASI, the Inter ASIS Distance is
+    defined as:
+
+    .. math::
+
+        InterASISDist = \sqrt{(RASI_x-LASI_x)^2 + (RASI_y-LASI_y)^2 +
+                        (RASI_z-LASI_z)^2}
+
+    where :math:`RASI_x` is the x-coordinate of the RASI marker in frame.
 
     Parameters
     ----------
-    frame : dict
-        Dictionary of marker lists.
+    rasi : array
+        Array of marker data.
+    lasi : array
+        Array of marker data.
 
     Returns
     -------
-    IAD : float
-        The mean of the list.
+    Inter Asis Distance : float
+        The euclidian distance between the two markers.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import IADcalculation
-    >>> frame = { 'LASI': np.array([ 183.19,  422.79, 1033.07]),
-    ...           'RASI': np.array([ 395.37,  428.1, 1036.83])}
-    >>> np.around(IADcalculation(frame), 2)
+    >>> from .static import get_iad
+    >>> rasi = np.array([395.37, 428.1, 1036.83])
+    >>> lasi = np.array([183.19, 422.79, 1033.07])
+    >>> np.around(get_iad(rasi, lasi), 2)
     212.28
     """
-    RASI = frame['RASI']
-    LASI = frame['LASI']
-    IAD = np.sqrt((RASI[0]-LASI[0])*(RASI[0]-LASI[0])+(RASI[1]-LASI[1])*(RASI[1]-LASI[1])+(RASI[2]-LASI[2])*(RASI[2]-LASI[2]))
 
-    return IAD
+    return np.sqrt(np.sum([(rasi[i] - lasi[i])**2 for i in range(3)]))
 
-def staticCalculationHead(frame,head):
-    """Static Head Calculation function
 
-    This function calculates the x,y,z axes of the head,
-    and then calculates the offset of the head using the headoffCalc function.
+def calculate_head_angle(head):
+    r"""Static Head Calculation function
+
+    This function first calculates the x, y, z axes of the head by
+    subtracting the head origin from the given head axes. Then the offset
+    angles are calculated. This is a y-rotation from the rotational matrix
+    created by the matrix multiplication of the distal
+    axis and the inverse of the proximal axis.
+
+    The head axis is calculated as follows:
+
+    ..math::
+
+        head\_axis = \begin{bmatrix}
+            head_{x1}-origin_x & head_{x2}-origin_y & head_{x3}-origin_z \\
+            head_{y1}-origin_x & head_{y2}-origin_y & head_{y3}-origin_z \\
+            head_{z1}-origin_x & head_{z2}-origin_y & head_{z3}-origin_z
+            \end{bmatrix}\\
+
+    The offset angle is defined as:
+
+    .. math::
+
+        \[ result = \arctan{\frac{M[0][2]}{M[2][2]}} \]
+
+    where M is the rotation matrix produced from multiplying distal_axis and
+    :math:`proximal_axis^{-1}`
 
     Parameters
     ----------
-    frame : dict
-        Dictionary of marker lists.
     head : array
         An array containing the head axis and head origin.
 
@@ -359,75 +261,36 @@ def staticCalculationHead(frame,head):
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import staticCalculationHead
-    >>> frame = None
-    >>> head = [[[100.33, 83.39, 1484.08],
+    >>> from .static import calculate_head_angle
+    >>> head = np.array([[[100.33, 83.39, 1484.08],
     ...        [98.97, 83.58, 1483.77],
     ...        [99.35, 82.64, 1484.76]],
-    ...        [99.58, 82.79, 1483.8]]
-    >>> np.around(staticCalculationHead(frame,head), 2)
+    ...        [99.58, 82.79, 1483.8]], dtype=list)
+    >>> np.around(calculate_head_angle(head), 2)
     0.28
     """
-    headAxis = head[0]
-    headOrigin = head[1]
-    x_axis = [headAxis[0][0]-headOrigin[0],headAxis[0][1]-headOrigin[1],headAxis[0][2]-headOrigin[2]]
-    y_axis = [headAxis[1][0]-headOrigin[0],headAxis[1][1]-headOrigin[1],headAxis[1][2]-headOrigin[2]]
-    z_axis = [headAxis[2][0]-headOrigin[0],headAxis[2][1]-headOrigin[1],headAxis[2][2]-headOrigin[2]]
 
-    axis = [x_axis,y_axis,z_axis]
-    global_axis = [[0,1,0],[-1,0,0],[0,0,1]]
+    # Calculate head_axis as above in the function description
+    # [[head_axis_x1 - origin_x, ...], ...]
+    head_axis = np.array([[head[0][y][x] - head[1][x] for x in range(3)]
+                          for y in range(3)])
 
-    offset = headoffCalc(global_axis,axis)
+    # Inversion of [[0, 1, 0], [-1, 0, 0], [0, 0, 1]]
+    # calculate_head_angle permanently assumes an incorrect axis.
+    inverted_global_axis = [[0, -1, 0], [1, 0, 0], [0, 0, 1]]
 
-    return offset
+    # Calculate rotational matrix.
+    rotation_matrix = np.matmul(head_axis, inverted_global_axis)
 
-def headoffCalc(axisP, axisD):
-    """Head Offset Calculation function
+    # Return arctangent of angle y.
+    with np.errstate(invalid='ignore', divide='ignore'):
+        sine_y = rotation_matrix[0][2]
+        cosine_y = np.nan_to_num(rotation_matrix[2][2])
+        return np.arctan(sine_y/cosine_y)
 
-    Calculate head offset angle for static calibration.
-    This function is only called in static trial.
-    and output will be used in dynamic later.
 
-    Parameters
-    ----------
-    axisP : list
-        Shows the unit vector of axisP, the position of the proximal axis.
-    axisD : list
-        Shows the unit vector of axisD, the position of the distal axis.
-
-    Returns
-    -------
-    angle : float
-        The beta angle of the head offset.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import headoffCalc
-    >>> axisP = [[0.96, 0.81, 0.82],
-    ...         [0.24, 0.72, 0.38],
-    ...         [0.98, 0.21, 0.68]]
-    >>> axisD = [[0.21, 0.25, 0.94],
-    ...         [0.8, 0.45, 0.91],
-    ...         [0.17, 0.67, 0.85]]
-    >>> np.around(headoffCalc(axisP,axisD), 2)
-    0.95
-    """
-    axisPi = np.linalg.inv(axisP)
-
-    # rotation matrix is in order XYZ
-    M = matrixmult(axisD,axisPi)
-
-    # get y angle from rotation matrix using inverse trigonometry.
-    getB= M[0][2] / M[2][2]
-
-    beta = np.arctan(getB)
-
-    angle = beta
-
-    return angle
-
-def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
+def get_static_angle(frame, ankle_joint_center, knee_joint_center,
+                     flat_foot, vsk=None):
     """Calculate the Static angle function
 
     Takes in anatomically uncorrected axis and anatomically correct axis.
@@ -441,10 +304,12 @@ def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
     ----------
     frame : dict
         Dictionary of marker lists.
-    ankle_JC : array
-        An array containing the x,y,z axes marker positions of the ankle joint center.
-    knee_JC : array
-        An array containing the x,y,z axes marker positions of the knee joint center.
+    ankle_joint_center : array
+        An array containing the x,y,z axes marker positions of the ankle joint
+        center.
+    knee_joint_center : array
+        An array containing the x,y,z axes marker positions of the knee joint
+        center.
     flat_foot : boolean
         A boolean indicating if the feet are flat or not.
     vsk : dict, optional
@@ -454,8 +319,9 @@ def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
     -------
     angle : list
         Returns the offset angle represented by a 2x3x3 list.
-        The array contains the right flexion, abduction, rotation angles (1x3x3)
-        followed by the left flexion, abduction, rotation angles (1x3x3).
+        The array contains the right flexion, abduction, rotation angles
+        (1x3x3) followed by the left flexion, abduction, rotation angles
+        (1x3x3).
 
     Modifies
     --------
@@ -464,12 +330,12 @@ def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import staticCalculation
+    >>> from .static import get_static_angle
     >>> frame = {'RTOE': np.array([427.95, 437.1,  41.77]),
     ...          'LTOE': np.array([175.79, 379.5,  42.61]),
     ...          'RHEE': np.array([406.46, 227.56,  48.76]),
     ...          'LHEE': np.array([223.6, 173.43,  47.93])}
-    >>> ankle_JC = [np.array([393.76, 247.68, 87.74]),
+    >>> ankle_joint_center = [np.array([393.76, 247.68, 87.74]),
     ...            np.array([98.75, 219.47, 80.63]),
     ...            [[np.array([394.48, 248.37, 87.72]),
     ...            np.array([393.07, 248.39, 87.62]),
@@ -477,7 +343,7 @@ def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
     ...            [np.array([98.47, 220.43, 80.53]),
     ...            np.array([97.79, 219.21, 80.76]),
     ...            np.array([98.85, 219.60, 81.62])]]]
-    >>> knee_JC = [np.array([364.18, 292.17, 515.19]),
+    >>> knee_joint_center = [np.array([364.18, 292.17, 515.19]),
     ...           np.array([143.55, 279.90, 524.78]),
     ...           np.array([[[364.65, 293.07, 515.19],
     ...           [363.29, 292.61, 515.04],
@@ -487,81 +353,53 @@ def staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk=None):
     ...           [143.65, 280.05, 525.77]]])]
     >>> flat_foot = True
     >>> vsk = { 'RightSoleDelta': 0.45,'LeftSoleDelta': 0.45 }
-    >>> np.around(staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk), 2)
-    array([[-0.08,  0.23, -0.66],
-           [-0.67,  0.22, -0.3 ]])
+    >>> np.around(get_static_angle(frame, ankle_joint_center, knee_joint_center, flat_foot, vsk), 2)
+    array([[-0.08,  0.2 , -0.65],
+           [-0.67,  0.19, -0.32]])
     >>> flat_foot = False # Using the same variables and switching the flat_foot flag.
-    >>> np.around(staticCalculation(frame,ankle_JC,knee_JC,flat_foot,vsk), 2)
-    array([[-0.08,  0.2 , -0.15],
-           [-0.67,  0.19,  0.12]])
+    >>> np.around(get_static_angle(frame, ankle_joint_center, knee_joint_center, flat_foot, vsk), 2)
+    array([[ 0.03,  0.22, -0.16],
+           [-0.48,  0.52,  0.28]])
     """
 
     # Get the each axis from the function.
-    uncorrect_foot = uncorrect_footaxis(frame,ankle_JC)
+    uncorrect = uncorrect_footaxis(frame, ankle_joint_center)
 
-    #change the reference uncorrect foot axis to same format
-    RF_center1_R_form = uncorrect_foot[0]
-    RF_center1_L_form = uncorrect_foot[1]
-    RF_axis1_R_form = uncorrect_foot[2][0]
-    RF_axis1_L_form = uncorrect_foot[2][1]
-
-    #make the array which will be the input of findangle function
-    RF1_R_Axis = np.vstack([np.subtract(RF_axis1_R_form[0],RF_center1_R_form),
-                            np.subtract(RF_axis1_R_form[1],RF_center1_R_form),
-                            np.subtract(RF_axis1_R_form[2],RF_center1_R_form)])
-    RF1_L_Axis = np.vstack([np.subtract(RF_axis1_L_form[0],RF_center1_L_form),
-                            np.subtract(RF_axis1_L_form[1],RF_center1_L_form),
-                            np.subtract(RF_axis1_L_form[2],RF_center1_L_form)])
+    # make the array which will be the input of findangle function
+    right_uncorrect = np.vstack([np.subtract(uncorrect[2][0][x], uncorrect[0])
+                                 for x in range(3)])
+    left_uncorrect = np.vstack([np.subtract(uncorrect[2][1][x], uncorrect[1])
+                                for x in range(3)])
 
     # Check if it is flat foot or not.
-    if flat_foot == False:
-        RF_axis2 = rotaxis_nonfootflat(frame,ankle_JC)
-        RF_center2_R_form = RF_axis2[0]
-        RF_center2_L_form = RF_axis2[1]
-        RF_axis2_R_form = RF_axis2[2][0]
-        RF_axis2_L_form = RF_axis2[2][1]
-        # make the array to same format for calculating angle.
-        RF2_R_Axis = np.vstack([np.subtract(RF_axis2_R_form[0],RF_center2_R_form),
-                            np.subtract(RF_axis2_R_form[1],RF_center2_R_form),
-                            np.subtract(RF_axis2_R_form[2],RF_center2_R_form)])
-        RF2_L_Axis = np.vstack([np.subtract(RF_axis2_L_form[0],RF_center2_L_form),
-                            np.subtract(RF_axis2_L_form[1],RF_center2_L_form),
-                            np.subtract(RF_axis2_L_form[2],RF_center2_L_form)])
+    if not flat_foot:
+        rotaxis = rotaxis_non_flat_foot(frame, ankle_joint_center)[2]
+    elif flat_foot:
+        rotaxis = rotaxis_flat_foot(frame, ankle_joint_center, vsk=vsk)[2]
 
-        R_AnkleFlex_angle = getankleangle(RF1_R_Axis,RF2_R_Axis)
-        L_AnkleFlex_angle = getankleangle(RF1_L_Axis,RF2_L_Axis)
+    # make the array to same format for calculating angle.
+    right_axis = np.vstack([np.subtract(rotaxis[0][x], uncorrect[0])
+                            for x in range(3)])
+    left_axis = np.vstack([np.subtract(rotaxis[1][x], uncorrect[1])
+                           for x in range(3)])
 
-    elif flat_foot == True:
-        RF_axis3 = rotaxis_footflat(frame,ankle_JC,vsk=vsk)
-        RF_center3_R_form = RF_axis3[0]
-        RF_center3_L_form = RF_axis3[1]
-        RF_axis3_R_form = RF_axis3[2][0]
-        RF_axis3_L_form = RF_axis3[2][1]
-        # make the array to same format for calculating angle.
-        RF3_R_Axis = np.vstack([np.subtract(RF_axis3_R_form[0],RF_center3_R_form),
-                            np.subtract(RF_axis3_R_form[1],RF_center3_R_form),
-                            np.subtract(RF_axis3_R_form[2],RF_center3_R_form)])
-        RF3_L_Axis = np.vstack([np.subtract(RF_axis3_L_form[0],RF_center3_L_form),
-                            np.subtract(RF_axis3_L_form[1],RF_center3_L_form),
-                            np.subtract(RF_axis3_L_form[2],RF_center3_L_form)])
-
-        R_AnkleFlex_angle = getankleangle(RF1_R_Axis,RF3_R_Axis)
-        L_AnkleFlex_angle = getankleangle(RF1_L_Axis,RF3_L_Axis)
-
-    angle = [R_AnkleFlex_angle,L_AnkleFlex_angle]
+    angle = [get_ankle_angle(right_uncorrect, right_axis),
+             get_ankle_angle(left_uncorrect, left_axis)]
 
     return angle
 
-def pelvisJointCenter(frame):
+
+def pelvis_joint_center(frame):
     """Make the Pelvis Axis function
 
-    Takes in a dictionary of x,y,z positions and marker names, as well as an index.
-    Calculates the pelvis joint center and axis and returns both.
+    Takes in a dictionary of x,y,z positions and marker names, as well as an
+    index. Calculates the pelvis joint center and axis and returns both.
 
     Markers used: RASI,LASI,RPSI,LPSI
     Other landmarks used: origin, sacrum
 
-    Pelvis X_axis: Computed with a Gram-Schmidt orthogonalization procedure(ref. Kadaba 1990) and then normalized.
+    Pelvis X_axis: Computed with a Gram-Schmidt orthogonalization procedure
+                   (ref. Kadaba 1990) and then normalized.
     Pelvis Y_axis: LASI-RASI x,y,z positions, then normalized.
     Pelvis Z_axis: Cross product of x_axis and y_axis.
 
@@ -573,33 +411,24 @@ def pelvisJointCenter(frame):
     Returns
     -------
     pelvis : list
-        Returns a list that contains the pelvis origin in a 1x3 array of xyz values,
-        a 4x1x3 array composed of the pelvis x, y, z axes components,
+        Returns a list that contains the pelvis origin in a 1x3 array of xyz
+        values, a 4x1x3 array composed of the pelvis x, y, z axes components,
         and the sacrum x, y, z position.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import pelvisJointCenter
+    >>> from .static import pelvis_joint_center
     >>> frame = {'RASI': np.array([ 395.37,  428.1, 1036.83]),
     ...          'LASI': np.array([ 183.19,  422.79, 1033.07]),
     ...          'RPSI': np.array([ 341.42,  246.72, 1055.99]),
     ...          'LPSI': np.array([ 255.8,  241.42, 1057.3]) }
-    >>> [np.around(arr, 2) for arr in pelvisJointCenter(frame)] #doctest: +NORMALIZE_WHITESPACE
+    >>> [np.around(arr, 2) for arr in pelvis_joint_center(frame)] #doctest: +NORMALIZE_WHITESPACE
     [array([ 289.28,  425.45, 1034.95]), array([[ 289.26,  426.44, 1034.83],
        [ 288.28,  425.42, 1034.93],
        [ 289.26,  425.56, 1035.94]]), array([ 298.61,  244.07, 1056.64])]
     """
-
-
     # Get the Pelvis Joint Centre
-
-    #REQUIRED MARKERS:
-    # RASI
-    # LASI
-    # RPSI
-    # LPSI
-
     RASI = frame['RASI']
     LASI = frame['LASI']
 
@@ -608,24 +437,14 @@ def pelvisJointCenter(frame):
         LPSI = frame['LPSI']
         #  If no sacrum, mean of posterior markers is used as the sacrum
         sacrum = (RPSI+LPSI)/2.0
-    except:
-        pass #going to use sacrum marker
+    except Exception:
+        pass  # going to use sacrum marker
 
     if 'SACR' in frame:
         sacrum = frame['SACR']
 
-
-    # REQUIRED LANDMARKS:
-    # origin
-    # sacrum
-
     # Origin is Midpoint between RASI and LASI
     origin = (RASI+LASI)/2.0
-
-    # print('Static calc Origin: ',origin)
-    # print('Static calc RASI: ',RASI)
-    # print('Static calc LASI: ',LASI)
-
 
     # This calculate the each axis
     # beta1,2,3 is arbitrary name to help calculate.
@@ -633,48 +452,59 @@ def pelvisJointCenter(frame):
     beta2 = LASI-RASI
 
     # Y_axis is normalized beta2
-    y_axis = beta2/norm3d(beta2)
+    beta2_norm = np.linalg.norm(beta2)
+    if np.nan_to_num(beta2_norm):
+        y_axis = np.divide(beta2, beta2_norm)
+    else:
+        y_axis = np.full_like(beta2, np.nan)
 
-    # X_axis computed with a Gram-Schmidt orthogonalization procedure(ref. Kadaba 1990)
-    # and then normalized.
-    beta3_cal = np.dot(beta1,y_axis)
+    # X_axis computed with a Gram-Schmidt orthogonalization procedure(ref.
+    # Kadaba 1990) and then normalized.
+    beta3_cal = np.dot(beta1, y_axis)
     beta3_cal2 = beta3_cal*y_axis
     beta3 = beta1-beta3_cal2
-    x_axis = beta3/norm3d(beta3)
+    beta3_norm = np.linalg.norm(beta3)
+    if np.nan_to_num(beta3_norm):
+        x_axis = np.divide(beta3, beta3_norm)
+    else:
+        x_axis = np.full_like(beta3, np.nan)
 
     # Z-axis is cross product of x_axis and y_axis.
-    z_axis = cross(x_axis,y_axis)
+    z_axis = np.cross(x_axis, y_axis)
 
-     # Add the origin back to the vector
+    # Add the origin back to the vector
     y_axis = y_axis+origin
     z_axis = z_axis+origin
     x_axis = x_axis+origin
 
-    pelvis_axis = np.asarray([x_axis,y_axis,z_axis])
+    pelvis_axis = np.asarray([x_axis, y_axis, z_axis])
 
-    pelvis = [origin,pelvis_axis,sacrum]
+    return [origin, pelvis_axis, sacrum]
 
-    #print('Pelvis JC in static: ',pelvis)
-    return pelvis
 
-def hipJointCenter(frame,pel_origin,pel_x,pel_y,pel_z,vsk=None):
+def hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z,
+                     vsk=None):
     """Calculate the hip joint center function.
 
-    Takes in a dictionary of x,y,z positions and marker names, as well as an index.
-    Calculates the hip joint center and returns the hip joint center.
+    Takes in a dictionary of x,y,z positions and marker names, as well as an
+    index. Calculates the hip joint center and returns the hip joint center.
 
     Other landmarks used: origin, sacrum
-    Subject Measurement values used: MeanLegLength, R_AsisToTrocanterMeasure, InterAsisDistance, L_AsisToTrocanterMeasure
+    Subject Measurement values used:
+        MeanLegLength, R_AsisToTrocanterMeasure, InterAsisDistance,
+        L_AsisToTrocanterMeasure
 
-    Hip Joint Center: Computed using Hip Joint Center Calculation (ref. Davis_1991)
+    Hip Joint Center: Computed using Hip Joint Center Calculation
+    (ref. Davis_1991)
 
     Parameters
     ----------
     frame : dict
         Dictionary of marker lists.
-    pel_origin : array
-        An array of pel_origin, pel_x, pel_y, pel_z each x,y,z position.
-    pel_x, pel_y, pel_z : int
+    pelvis_origin : array
+        An array of pelvis_origin, pelvis_x, pelvis_y, pelvis_z each x,y,z
+        position.
+    pelvis_x, pelvis_y, pelvis_z : int
         Respective axes of the pelvis.
     vsk : dict, optional
         A dictionary containing subject measurements from a VSK file.
@@ -682,133 +512,104 @@ def hipJointCenter(frame,pel_origin,pel_x,pel_y,pel_z,vsk=None):
     Returns
     -------
     hip_JC : array
-        Returns an array containing the left hip joint center x, y, z marker positions (1x3),
-        followed by the right hip joint center x, y, z marker positions (1x3).
+        Returns an array containing the left hip joint center x, y, z marker
+        positions (1x3), followed by the right hip joint center x, y, z marker
+        positions (1x3).
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import hipJointCenter
+    >>> from .static import hip_joint_center
     >>> frame = None
     >>> vsk = {'MeanLegLength': 940.0, 'R_AsisToTrocanterMeasure': 72.51,
     ...        'L_AsisToTrocanterMeasure': 72.51, 'InterAsisDistance': 215.91}
-    >>> pel_origin = [ 251.61, 391.74, 1032.89]
-    >>> pel_x = [251.74, 392.73, 1032.79]
-    >>> pel_y = [250.62, 391.87, 1032.87]
-    >>> pel_z = [251.60, 391.85, 1033.89]
-    >>> np.around(hipJointCenter(frame,pel_origin,pel_x,pel_y,pel_z,vsk), 2)    #doctest: +NORMALIZE_WHITESPACE
+    >>> pelvis_origin = [ 251.61, 391.74, 1032.89]
+    >>> pelvis_x = [251.74, 392.73, 1032.79]
+    >>> pelvis_y = [250.62, 391.87, 1032.87]
+    >>> pelvis_z = [251.60, 391.85, 1033.89]
+    >>> np.around(hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z, vsk), 2)    #doctest: +NORMALIZE_WHITESPACE
     array([[183.24, 338.8 , 934.65],
            [308.9 , 322.3 , 937.19]])
     """
-    #Get Global Values
-
-    # Requires
-    # pelvis axis
-
-    pel_origin=np.asarray(pel_origin)
-    pel_x=np.asarray(pel_x)
-    pel_y=np.asarray(pel_y)
-    pel_z=np.asarray(pel_z)
-
-    # Model's eigen value
-    #
-    # LegLength
-    # MeanLegLength
-    # mm (marker radius)
-    # interAsisMeasure
-
-    #Set the variables needed to calculate the joint angle
-
+    # Get Global Values=
+    # Set the variables needed to calculate the joint angle
     mm = 7.0
-    #mm = 14.0 #can this be given?
-    MeanLegLength = vsk['MeanLegLength']
-    R_AsisToTrocanterMeasure = vsk['R_AsisToTrocanterMeasure']
-    L_AsisToTrocanterMeasure = vsk['L_AsisToTrocanterMeasure']
-
-    interAsisMeasure = vsk['InterAsisDistance']
-    C = ( MeanLegLength * 0.115 ) - 15.3
+    C = (vsk['MeanLegLength'] * 0.115) - 15.3
     theta = 0.500000178813934
     beta = 0.314000427722931
-    aa = interAsisMeasure/2.0
-    S = -1
+    half_inter_asis_distance = vsk['InterAsisDistance']/2.0
 
+    asis_to_trocanter_measures = [vsk['R_AsisToTrocanterMeasure'],
+                                  vsk['L_AsisToTrocanterMeasure']]
     # Hip Joint Center Calculation (ref. Davis_1991)
+    pelvis_axis = [np.subtract(pelvis_x, pelvis_origin),
+                   np.subtract(pelvis_y, pelvis_origin),
+                   np.subtract(pelvis_z, pelvis_origin)]
+    distances = []
+    hip_joint_center = []
+    for side in range(2):
+        y_distance = C*np.sin(theta)-half_inter_asis_distance
+        y_distance *= 1 if not side else -1
+        # Calculate the distance to translate along the pelvis axis
+        distances.append([(-asis_to_trocanter_measures[side] - mm)
+                          * np.cos(beta) + C * np.cos(theta) * np.sin(beta),
+                          y_distance,
+                          (-asis_to_trocanter_measures[side] - mm)
+                          * np.sin(beta) - C * np.cos(theta) * np.cos(beta)])
 
-    # Left: Calculate the distance to translate along the pelvis axis
-    L_Xh = (-L_AsisToTrocanterMeasure - mm) * cos(beta) + C * cos(theta) * sin(beta)
-    L_Yh = S*(C*sin(theta)- aa)
-    L_Zh = (-L_AsisToTrocanterMeasure - mm) * sin(beta) - C * cos(theta) * cos(beta)
+        # Multiply the distance to the unit pelvis axis
+        pelvis_distances = [np.multiply(pelvis_axis[x], distances[side][x])
+                            for x in range(3)]
+        hip_joint_center.append(np.add([pelvis_distances[0][x]
+                                        + pelvis_distances[1][x]
+                                        + pelvis_distances[2][x]
+                                for x in range(3)], pelvis_origin))
 
-    # Right:  Calculate the distance to translate along the pelvis axis
-    R_Xh = (-R_AsisToTrocanterMeasure - mm) * cos(beta) + C * cos(theta) * sin(beta)
-    R_Yh = (C*sin(theta)- aa)
-    R_Zh = (-R_AsisToTrocanterMeasure - mm) * sin(beta) - C * cos(theta) * cos(beta)
+    return hip_joint_center[::-1]
 
-    # get the unit pelvis axis
-    pelvis_xaxis = pel_x-pel_origin
-    pelvis_yaxis = pel_y-pel_origin
-    pelvis_zaxis = pel_z-pel_origin
 
-    # multiply the distance to the unit pelvis axis
-    L_hipJCx = pelvis_xaxis*L_Xh
-    L_hipJCy = pelvis_yaxis*L_Yh
-    L_hipJCz = pelvis_zaxis*L_Zh
-    L_hipJC = np.asarray([  L_hipJCx[0]+L_hipJCy[0]+L_hipJCz[0],
-                            L_hipJCx[1]+L_hipJCy[1]+L_hipJCz[1],
-                            L_hipJCx[2]+L_hipJCy[2]+L_hipJCz[2]])
-
-    R_hipJCx = pelvis_xaxis*R_Xh
-    R_hipJCy = pelvis_yaxis*R_Yh
-    R_hipJCz = pelvis_zaxis*R_Zh
-    R_hipJC = np.asarray([  R_hipJCx[0]+R_hipJCy[0]+R_hipJCz[0],
-                            R_hipJCx[1]+R_hipJCy[1]+R_hipJCz[1],
-                            R_hipJCx[2]+R_hipJCy[2]+R_hipJCz[2]])
-
-    L_hipJC = L_hipJC+pel_origin
-    R_hipJC = R_hipJC+pel_origin
-
-    hip_JC = np.asarray([L_hipJC,R_hipJC])
-
-    return hip_JC
-
-def hipAxisCenter(l_hip_jc,r_hip_jc,pelvis_axis):
+def hip_axis_center(left_hip_joint_center, right_hip_joint_center,
+                    pelvis_axis):
     """Calculate the hip joint axis function.
 
     Takes in a hip joint center of x,y,z positions as well as an index.
-    and takes the hip joint center and pelvis origin/axis from previous functions.
-    Calculates the hip axis and returns hip joint origin and axis.
+    and takes the hip joint center and pelvis origin/axis from previous
+    functions. Calculates the hip axis and returns hip joint origin and axis.
 
-    Hip center axis: mean at each x,y,z axis of the left and right hip joint center.
+    Hip center axis: mean at each x,y,z axis of the left and right hip joint
+                     center.
     Hip axis: summation of the pelvis and hip center axes.
 
     Parameters
     ----------
-    l_hip_jc, r_hip_jc: array
-        Array of R_hip_jc and L_hip_jc each x,y,z position.
+    left_hip_joint_center, right_hip_joint_center: array
+        Array of right_hip_joint_center and left_hip_joint_center each x,y,z
+        position.
     pelvis_axis : array
-        An array of pelvis origin and axis. The axis is also composed of 3 arrays,
-        each contain the x axis, y axis and z axis.
+        An array of pelvis origin and axis. The axis is also composed of 3
+        arrays, each contain the x axis, y axis and z axis.
 
     Returns
     -------
-    hipaxis_center, axis : list
-        Returns a list that contains the hip axis center in a 1x3 list of xyz values,
-        which is then followed by a 3x2x3 list composed of the hip axis center x, y, and z
-        axis components. The xyz axis components are 2x3 lists consisting of the axis center
-        in the first dimension and the direction of the axis in the second dimension.
+    hip_axis_center, shared_hip_center: list
+        Returns a list that contains the hip axis center in a 1x3 list of xyz
+        values, which is then followed by a 3x2x3 list composed of the hip axis
+        center x, y, and z axis components. The xyz axis components are 2x3
+        lists consisting of the axis center in the first dimension and the
+        direction of the axis in the second dimension.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import hipAxisCenter
-    >>> r_hip_jc = [182.57, 339.43, 935.53]
-    >>> l_hip_jc = [308.38, 322.80, 937.99]
+    >>> from .static import hip_axis_center
+    >>> right_hip_joint_center = [182.57, 339.43, 935.53]
+    >>> left_hip_joint_center = [308.38, 322.80, 937.99]
     >>> pelvis_axis = [np.array([251.61, 391.74, 1032.89]),
     ...                np.array([[251.74, 392.73, 1032.79],
     ...                    [250.62, 391.87, 1032.87],
     ...                    [251.60, 391.85, 1033.89]]),
     ...                np.array([231.58, 210.25, 1052.25])]
-    >>> [np.around(arr,8) for arr in hipAxisCenter(l_hip_jc,r_hip_jc,pelvis_axis)] #doctest: +NORMALIZE_WHITESPACE
+    >>> [np.around(arr,8) for arr in hip_axis_center(left_hip_joint_center, right_hip_joint_center, pelvis_axis)] #doctest: +NORMALIZE_WHITESPACE
     [array([245.475, 331.115, 936.76 ]),
     array([[245.605, 332.105, 936.66 ],
            [244.485, 331.245, 936.74 ],
@@ -816,53 +617,51 @@ def hipAxisCenter(l_hip_jc,r_hip_jc,pelvis_axis):
     """
 
     # Get shared hip axis, it is inbetween the two hip joint centers
-    hipaxis_center = [(r_hip_jc[0]+l_hip_jc[0])/2.0,(r_hip_jc[1]+l_hip_jc[1])/2.0,(r_hip_jc[2]+l_hip_jc[2])/2.0]
+    hip_axis_center = np.mean([left_hip_joint_center, right_hip_joint_center],
+                              axis=0)
 
-    #convert pelvis_axis to x,y,z axis to use more easy
-    pelvis_x_axis = np.subtract(pelvis_axis[1][0],pelvis_axis[0])
-    pelvis_y_axis = np.subtract(pelvis_axis[1][1],pelvis_axis[0])
-    pelvis_z_axis = np.subtract(pelvis_axis[1][2],pelvis_axis[0])
-
-    #Translate pelvis axis to shared hip centre
+    # Translate pelvis axis to shared hip centre
     # Add the origin back to the vector
-    y_axis = [pelvis_y_axis[0]+hipaxis_center[0],pelvis_y_axis[1]+hipaxis_center[1],pelvis_y_axis[2]+hipaxis_center[2]]
-    z_axis = [pelvis_z_axis[0]+hipaxis_center[0],pelvis_z_axis[1]+hipaxis_center[1],pelvis_z_axis[2]+hipaxis_center[2]]
-    x_axis = [pelvis_x_axis[0]+hipaxis_center[0],pelvis_x_axis[1]+hipaxis_center[1],pelvis_x_axis[2]+hipaxis_center[2]]
+    shared_hip_center = [np.add(np.subtract(pelvis_axis[1][x], pelvis_axis[0]),
+                                hip_axis_center) for x in range(3)]
 
-    axis = [x_axis,y_axis,z_axis]
+    return [hip_axis_center, shared_hip_center]
 
-    return [hipaxis_center,axis]
 
-def kneeJointCenter(frame,hip_JC,delta,vsk=None):
+def knee_joint_center(frame, hip_joint_center, delta, vsk=None):
     """Calculate the knee joint center and axis function.
 
-    Takes in a dictionary of xyz positions and marker names, as well as an index.
-    and takes the hip axis and pelvis axis.
-    Calculates the knee joint axis and returns the knee origin and axis
+    Takes in a dictionary of xyz positions and marker names, as well as an
+    index and takes the hip axis and pelvis axis.
+    Calculates the knee joint axis and returns the knee origin and axis.
 
-    Markers used: RTHI, LTHI, RKNE, LKNE, hip_JC
+    Markers used: RTHI, LTHI, RKNE, LKNE, hip_joint_center
     Subject Measurement values used: RightKneeWidth, LeftKneeWidth
 
-    Knee joint center: Computed using Knee Axis Calculation(ref. Clinical Gait Analysis hand book, Baker2013)
+    Knee joint center: Computed using Knee Axis Calculation(ref. Clinical Gait
+    Analysis hand book, Baker2013)
 
     Parameters
     ----------
     frame : dict
         dictionary of marker lists.
-    hip_JC : array
-        An array of hip_JC containing the x,y,z axes marker positions of the hip joint center.
+    hip_joint_center : array
+        An array of hip_joint_center containing the x,y,z axes marker positions
+        of the hip joint center.
     delta : float
-        The length from marker to joint center, retrieved from subject measurement file.
+        The length from marker to joint center, retrieved from subject
+        measurement file.
     vsk : dict, optional
         A dictionary containing subject measurements from a VSK file.
 
     Returns
     -------
-    R, L, axis : list
-        Returns a list that contains the knee axes' center in two 1x3 arrays of xyz values,
-        which is then followed by a 2x3x3 array composed of the knee axis center x, y, and z
-        axis components. The xyz axis components are 2x3 arrays consisting of the axis center
-        in the first dimension and the direction of the axis in the second dimension.
+    R, L, knee_axes : list
+        Returns a list that contains the knee axes' center in two 1x3 arrays of
+        xyz values, which is then followed by a 2x3x3 array composed of the
+        knee axis center x, y, and z axis components. The xyz axis components
+        are 2x3 arrays consisting of the axis center in the first dimension and
+        the direction of the axis in the second dimension.
 
     Modifies
     --------
@@ -871,164 +670,119 @@ def kneeJointCenter(frame,hip_JC,delta,vsk=None):
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import kneeJointCenter
+    >>> from .static import knee_joint_center
     >>> vsk = { 'RightKneeWidth' : 105.0, 'LeftKneeWidth' : 105.0 }
     >>> frame = { 'RTHI': np.array([426.50, 262.65, 673.66]),
     ...           'LTHI': np.array([51.94, 320.02, 723.03]),
     ...           'RKNE': np.array([416.99, 266.23, 524.04]),
     ...           'LKNE': np.array([84.62, 286.69, 529.40])}
-    >>> hip_JC = [[182.57, 339.43, 935.53],
+    >>> hip_joint_center = [[182.57, 339.43, 935.53],
     ...         [309.38, 322.80, 937.99]]
     >>> delta = 0
-    >>> [np.around(arr, 2) for arr in kneeJointCenter(frame,hip_JC,delta,vsk)] #doctest: +NORMALIZE_WHITESPACE
-    [array([364.24, 292.34, 515.31]), array([143.55, 279.9 , 524.79]), array([[[364.69, 293.24, 515.31],
-            [363.36, 292.78, 515.17],
-            [364.12, 292.42, 516.3 ]],
-           [[143.65, 280.88, 524.63],
-            [142.56, 280.01, 524.86],
-            [143.64, 280.04, 525.77]]])]
+    >>> [np.around(arr, 2) for arr in knee_joint_center(frame,hip_joint_center,delta,vsk)] #doctest: +NORMALIZE_WHITESPACE
+    [array([364.24, 292.34, 515.31]),
+     array([143.55, 279.9 , 524.79]),
+     array([[[364.69, 293.24, 515.31],
+             [363.36, 292.78, 515.17],
+             [364.12, 292.42, 516.3 ]],
+            [[143.65, 280.88, 524.63],
+             [142.56, 280.01, 524.86],
+             [143.64, 280.04, 525.77]]])]
     """
+    # Get Global Values
+    hip_joint_center = [hip_joint_center[1], hip_joint_center[0]]
+    thighs = [frame['RTHI'], frame['LTHI']]
+    knees = [frame['RKNE'], frame['LKNE']]
+    deltas = [(vsk['RightKneeWidth']/2.0)+7.0,
+              (vsk['LeftKneeWidth']/2.0)+7.0]
+    knee_axes = []
+    axes = []
+    positions = []
+    for side in range(2):
+        # Determine the position of knee_joint_center using the
+        # find_joint_center function
+        positions.append(find_joint_center(thighs[side],
+                                           hip_joint_center[side],
+                                           knees[side], deltas[side]))
+
+        # Knee Axis Calculation(ref. Clinical Gait Analysis hand book, Baker2013)
+        # Z axis is the thigh bone calculated by the hip_joint_center and the
+        # knee_joint_center the axis is then normalized
+        z_axis = np.subtract(hip_joint_center[side], positions[side])
+
+        # X axis is perpendicular to the points plane which is determined by
+        # KJC, HJC, KNE markers and calculated by each point's vector cross
+        # vector. The axis is then normalized.
+        if not side:
+            x_axis = np.cross(z_axis, np.subtract(thighs[side], knees[side]))
+        else:
+            x_axis = np.cross(np.subtract(thighs[side], knees[side]), z_axis)
+
+        # Y axis is determined by cross product of z_axis and x_axis.
+        y_axis = np.cross(z_axis, x_axis)
+        axes.append([x_axis, y_axis, z_axis])
+
+        # Normalize the axes, right then left
+        knee_axis = []
+        for axis in axes[side]:
+            # x_axis then y_axis and finally z_axis
+            tmp_knee_axis = axis
+            tmp_knee_axis_norm = np.nan_to_num(np.linalg.norm(tmp_knee_axis))
+            if tmp_knee_axis_norm:
+                tmp_knee_axis = np.divide(tmp_knee_axis, tmp_knee_axis_norm)
+            knee_axis.append(tmp_knee_axis)
+
+        # Add the origin back to the vector
+        knee_axes.append(np.add(knee_axis, positions[side]))
+
+    return [positions[0], positions[1], knee_axes]
 
 
-
-    #Get Global Values
-    mm = 7.0
-    R_kneeWidth = vsk['RightKneeWidth']
-    L_kneeWidth = vsk['LeftKneeWidth']
-    R_delta = (R_kneeWidth/2.0)+mm
-    L_delta = (L_kneeWidth/2.0)+mm
-
-    #REQUIRED MARKERS:
-    # RTHI
-    # LTHI
-    # RKNE
-    # LKNE
-    # hip_JC
-
-    RTHI = frame['RTHI']
-    LTHI = frame['LTHI']
-    RKNE = frame['RKNE']
-    LKNE = frame['LKNE']
-
-    R_hip_JC = hip_JC[1]
-    L_hip_JC = hip_JC[0]
-
-     # Determine the position of kneeJointCenter using findJointC function
-    R = findJointC(RTHI,R_hip_JC,RKNE,R_delta)
-    L = findJointC(LTHI,L_hip_JC,LKNE,L_delta)
-
-    # Knee Axis Calculation(ref. Clinical Gait Analysis hand book, Baker2013)
-    #Right axis calculation
-
-    thi_kne_R = RTHI-RKNE
-
-    # Z axis is Thigh bone calculated by the hipJC and  kneeJC
-    # the axis is then normalized
-    axis_z = R_hip_JC-R
-
-    # X axis is perpendicular to the points plane which is determined by KJC, HJC, KNE markers.
-    # and calculated by each point's vector cross vector.
-    # the axis is then normalized.
-    axis_x = cross(axis_z,thi_kne_R)
-
-    # Y axis is determined by cross product of axis_z and axis_x.
-    # the axis is then normalized.
-    axis_y = cross(axis_z,axis_x)
-
-    Raxis = np.asarray([axis_x,axis_y,axis_z])
-
-    #Left axis calculation
-
-    thi_kne_L = LTHI-LKNE
-
-    # Z axis is Thigh bone calculated by the hipJC and  kneeJC
-    # the axis is then normalized
-    axis_z = L_hip_JC-L
-
-    # X axis is perpendicular to the points plane which is determined by KJC, HJC, KNE markers.
-    # and calculated by each point's vector cross vector.
-    # the axis is then normalized.
-    axis_x = cross(thi_kne_L,axis_z)
-
-    # Y axis is determined by cross product of axis_z and axis_x.
-    # the axis is then normalized.
-    axis_y = cross(axis_z,axis_x)
-
-    Laxis = np.asarray([axis_x,axis_y,axis_z])
-
-    # Clear the name of axis and then nomalize it.
-    R_knee_x_axis = Raxis[0]
-    R_knee_x_axis = R_knee_x_axis/norm3d(R_knee_x_axis)
-    R_knee_y_axis = Raxis[1]
-    R_knee_y_axis = R_knee_y_axis/norm3d(R_knee_y_axis)
-    R_knee_z_axis = Raxis[2]
-    R_knee_z_axis = R_knee_z_axis/norm3d(R_knee_z_axis)
-    L_knee_x_axis = Laxis[0]
-    L_knee_x_axis = L_knee_x_axis/norm3d(L_knee_x_axis)
-    L_knee_y_axis = Laxis[1]
-    L_knee_y_axis = L_knee_y_axis/norm3d(L_knee_y_axis)
-    L_knee_z_axis = Laxis[2]
-    L_knee_z_axis = L_knee_z_axis/norm3d(L_knee_z_axis)
-
-    #Put both axis in array
-    # Add the origin back to the vector
-    y_axis = R_knee_y_axis+R
-    z_axis = R_knee_z_axis+R
-    x_axis = R_knee_x_axis+R
-    Raxis = np.asarray([x_axis,y_axis,z_axis])
-
-    # Add the origin back to the vector
-    y_axis = L_knee_y_axis+L
-    z_axis = L_knee_z_axis+L
-    x_axis = L_knee_x_axis+L
-    Laxis = np.asarray([x_axis,y_axis,z_axis])
-
-    axis = np.asarray([Raxis,Laxis])
-
-    return [R,L,axis]
-
-def ankleJointCenter(frame,knee_JC,delta,vsk=None):
+def ankle_joint_center(frame, knee_joint_center, delta, vsk=None):
     """Calculate the ankle joint center and axis function.
 
     Takes in a dictionary of xyz positions and marker names, an index
     and the knee axis.
     Calculates the ankle joint axis and returns the ankle origin and axis.
 
-    Markers used: tib_R, tib_L, ank_R, ank_L, knee_JC
+    Markers used: RTIB, LTIB, RANK, LANK, knee_joint_center
     Subject Measurement values used: RightKneeWidth, LeftKneeWidth
 
-    Ankle Axis: Computed using Ankle Axis Calculation(ref. Clinical Gait Analysis hand book, Baker2013).
+    Ankle Axis: Computed using Ankle Axis Calculation(ref. Clinical Gait
+    Analysis hand book, Baker2013).
 
     Parameters
     ----------
     frame : dict
         Dictionary of marker lists.
-    knee_JC : array
-        An array of knee_JC each x,y,z position.
+    knee_joint_center : array
+        An array of knee_joint_center each x,y,z position.
     delta : float
-        The length from marker to joint center, retrieved from subject measurement file.
+        The length from marker to joint center, retrieved from subject
+        measurement file.
     vsk : dict, optional
         A dictionary containing subject measurements from a VSK file.
 
     Returns
     -------
     R, L, axis : list
-        Returns a list that contains the ankle axis origin in 1x3 arrays of xyz values
-        and a 3x2x3 list composed of the ankle origin, x, y, and z axis components. The
-        xyz axis components are 2x3 lists consisting of the origin in the first
-        dimension and the direction of the axis in the second dimension.
+        Returns a list that contains the ankle axis origin in 1x3 arrays of xyz
+        values and a 3x2x3 list composed of the ankle origin, x, y, and z axis
+        components. The xyz axis components are 2x3 lists consisting of the
+        origin in the first dimension and the direction of the axis in the
+        second dimension.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import ankleJointCenter
+    >>> from .static import ankle_joint_center
     >>> vsk = { 'RightAnkleWidth' : 70.0, 'LeftAnkleWidth' : 70.0,
     ...         'RightTibialTorsion': 0.0, 'LeftTibialTorsion' : 0.0}
     >>> frame = { 'RTIB': np.array([433.98, 211.93, 273.30]),
     ...           'LTIB': np.array([50.04, 235.91, 364.32]),
     ...           'RANK': np.array([422.77, 217.74, 92.86]),
     ...           'LANK': np.array([58.57, 208.55, 86.17]) }
-    >>> knee_JC = [np.array([364.18, 292.17, 515.19]),
+    >>> knee_joint_center = [np.array([364.18, 292.17, 515.19]),
     ...           np.array([143.55, 279.90, 524.78]),
     ...           np.array([[[364.65, 293.07, 515.18],
     ...           [363.29, 292.61, 515.04],
@@ -1037,147 +791,79 @@ def ankleJointCenter(frame,knee_JC,delta,vsk=None):
     ...           [142.56, 280.02, 524.86],
     ...            [143.65, 280.05, 525.77]]])]
     >>> delta = 0
-    >>> [np.around(arr, 2) for arr in ankleJointCenter(frame,knee_JC,delta,vsk)] #doctest: +NORMALIZE_WHITESPACE
-    [array([393.76, 247.68,  87.74]), array([ 98.75, 219.47,  80.63]), array([[[394.48, 248.37,  87.71],
-    [393.07, 248.39,  87.61],
-    [393.69, 247.78,  88.73]],
-    [[ 98.47, 220.43,  80.53],
-    [ 97.79, 219.21,  80.76],
-    [ 98.85, 219.6 ,  81.62]]])]
+    >>> [np.around(arr, 2) for arr in ankle_joint_center(frame, knee_joint_center, delta, vsk)] #doctest: +NORMALIZE_WHITESPACE
+    [array([393.76, 247.68,  87.74]),
+     array([ 98.75, 219.47,  80.63]),
+     array([[[394.48, 248.37,  87.71],
+             [393.07, 248.39,  87.61],
+             [393.69, 247.78,  88.73]],
+            [[ 98.47, 220.43,  80.53],
+             [ 97.79, 219.21,  80.76],
+             [ 98.85, 219.6 ,  81.62]]])]
     """
 
-    #Get Global Values
-    R_ankleWidth = vsk['RightAnkleWidth']
-    L_ankleWidth = vsk['LeftAnkleWidth']
-    R_torsion = vsk['RightTibialTorsion']
-    L_torsion = vsk['LeftTibialTorsion']
-    mm = 7.0
-    R_delta = ((R_ankleWidth)/2.0)+mm
-    L_delta = ((L_ankleWidth)/2.0)+mm
-
-    #REQUIRED MARKERS:
-    # tib_R
-    # tib_L
-    # ank_R
-    # ank_L
-    # knee_JC
-
-    tib_R = frame['RTIB']
-    tib_L = frame['LTIB']
-    ank_R = frame['RANK']
-    ank_L = frame['LANK']
-
-    knee_JC_R = knee_JC[0]
-    knee_JC_L = knee_JC[1]
-
+    # Get Global Values
+    tibias = [frame['RTIB'], frame['LTIB']]
+    ankles = [frame['RANK'], frame['LANK']]
+    deltas = [(vsk['RightAnkleWidth']/2.0)+7.0,
+              (vsk['LeftAnkleWidth']/2.0)+7.0]
+    torsions = [np.radians(vsk['RightTibialTorsion']),
+                np.radians(vsk['LeftTibialTorsion'])]
+    rotated_axes = []
+    axes = []
+    positions = []
     # This is Torsioned Tibia and this describe the ankle angles
     # Tibial frontal plane being defined by ANK,TIB and KJC
+    for side in range(2):
+        # Determine the position of ankle_joint_center using the
+        # find_joint_center function
+        positions.append(find_joint_center(tibias[side],
+                                           knee_joint_center[side],
+                                           ankles[side], deltas[side]))
+        # Ankle Axis Calculation(ref. Clinical Gait Analysis hand book,
+        # Baker2013). The Z axis is shank bone calculated by the
+        # ankle_joint_center and the knee_joint_center.
+        z_axis = np.subtract(knee_joint_center[side], positions[side])
 
-    # Determine the position of ankleJointCenter using findJointC function
-    R = findJointC(tib_R, knee_JC_R, ank_R, R_delta)
-    L = findJointC(tib_L, knee_JC_L, ank_L, L_delta)
+        # X axis is perpendicular to the points plane which is determined by
+        # the ANK, TIB and KJC markers and calculated by each point's vector
+        # cross vector. The x_axis vector is making a tibia plane to be assumed
+        # as a rigid segment.
+        if not side:
+            x_axis = np.cross(z_axis, np.subtract(tibias[side], ankles[side]))
+        else:
+            x_axis = np.cross(np.subtract(tibias[side], ankles[side]), z_axis)
 
-    # Ankle Axis Calculation(ref. Clinical Gait Analysis hand book, Baker2013)
-        #Right axis calculation
+        # Y axis is determined by cross product of axis_z and axis_x.
+        y_axis = np.cross(z_axis, x_axis)
+        axes.append([x_axis, y_axis, z_axis])
 
-    # Z axis is shank bone calculated by the ankleJC and  kneeJC
-    axis_z = knee_JC_R-R
+        # Normalize the axes, right then left
+        ankle_axis = []
+        for axis in axes[side]:
+            # x_axis then y_axis and finally z_axis
+            tmp_ankle_axis = axis
+            tmp_ankle_axis_norm = np.nan_to_num(np.linalg.norm(tmp_ankle_axis))
+            if tmp_ankle_axis_norm:
+                tmp_ankle_axis = np.divide(tmp_ankle_axis, tmp_ankle_axis_norm)
+            ankle_axis.append(tmp_ankle_axis)
 
-    # X axis is perpendicular to the points plane which is determined by ANK,TIB and KJC markers.
-    # and calculated by each point's vector cross vector.
-    # tib_ank_R vector is making a tibia plane to be assumed as rigid segment.
-    tib_ank_R = tib_R-ank_R
-    axis_x = cross(axis_z,tib_ank_R)
-
-    # Y axis is determined by cross product of axis_z and axis_x.
-    axis_y = cross(axis_z,axis_x)
-
-    Raxis = [axis_x,axis_y,axis_z]
-
-        #Left axis calculation
-
-    # Z axis is shank bone calculated by the ankleJC and  kneeJC
-    axis_z = knee_JC_L-L
-
-    # X axis is perpendicular to the points plane which is determined by ANK,TIB and KJC markers.
-    # and calculated by each point's vector cross vector.
-    # tib_ank_L vector is making a tibia plane to be assumed as rigid segment.
-    tib_ank_L = tib_L-ank_L
-    axis_x = cross(tib_ank_L,axis_z)
-
-    # Y axis is determined by cross product of axis_z and axis_x.
-    axis_y = cross(axis_z,axis_x)
-
-    Laxis = [axis_x,axis_y,axis_z]
-
-    # Clear the name of axis and then normalize it.
-    R_ankle_x_axis = Raxis[0]
-    R_ankle_x_axis_div = norm2d(R_ankle_x_axis)
-    R_ankle_x_axis = [R_ankle_x_axis[0]/R_ankle_x_axis_div,R_ankle_x_axis[1]/R_ankle_x_axis_div,R_ankle_x_axis[2]/R_ankle_x_axis_div]
-
-    R_ankle_y_axis = Raxis[1]
-    R_ankle_y_axis_div = norm2d(R_ankle_y_axis)
-    R_ankle_y_axis = [R_ankle_y_axis[0]/R_ankle_y_axis_div,R_ankle_y_axis[1]/R_ankle_y_axis_div,R_ankle_y_axis[2]/R_ankle_y_axis_div]
-
-    R_ankle_z_axis = Raxis[2]
-    R_ankle_z_axis_div = norm2d(R_ankle_z_axis)
-    R_ankle_z_axis = [R_ankle_z_axis[0]/R_ankle_z_axis_div,R_ankle_z_axis[1]/R_ankle_z_axis_div,R_ankle_z_axis[2]/R_ankle_z_axis_div]
-
-    L_ankle_x_axis = Laxis[0]
-    L_ankle_x_axis_div = norm2d(L_ankle_x_axis)
-    L_ankle_x_axis = [L_ankle_x_axis[0]/L_ankle_x_axis_div,L_ankle_x_axis[1]/L_ankle_x_axis_div,L_ankle_x_axis[2]/L_ankle_x_axis_div]
-
-    L_ankle_y_axis = Laxis[1]
-    L_ankle_y_axis_div = norm2d(L_ankle_y_axis)
-    L_ankle_y_axis = [L_ankle_y_axis[0]/L_ankle_y_axis_div,L_ankle_y_axis[1]/L_ankle_y_axis_div,L_ankle_y_axis[2]/L_ankle_y_axis_div]
-
-    L_ankle_z_axis = Laxis[2]
-    L_ankle_z_axis_div = norm2d(L_ankle_z_axis)
-    L_ankle_z_axis = [L_ankle_z_axis[0]/L_ankle_z_axis_div,L_ankle_z_axis[1]/L_ankle_z_axis_div,L_ankle_z_axis[2]/L_ankle_z_axis_div]
-
-
-    #Put both axis in array
-    Raxis = [R_ankle_x_axis,R_ankle_y_axis,R_ankle_z_axis]
-    Laxis = [L_ankle_x_axis,L_ankle_y_axis,L_ankle_z_axis]
-
-    # Rotate the axes about the tibia torsion.
-    R_torsion = np.radians(R_torsion)
-    L_torsion = np.radians(L_torsion)
-
-    Raxis = [[cos(R_torsion)*Raxis[0][0]-sin(R_torsion)*Raxis[1][0],
-            cos(R_torsion)*Raxis[0][1]-sin(R_torsion)*Raxis[1][1],
-            cos(R_torsion)*Raxis[0][2]-sin(R_torsion)*Raxis[1][2]],
-            [sin(R_torsion)*Raxis[0][0]+cos(R_torsion)*Raxis[1][0],
-            sin(R_torsion)*Raxis[0][1]+cos(R_torsion)*Raxis[1][1],
-            sin(R_torsion)*Raxis[0][2]+cos(R_torsion)*Raxis[1][2]],
-            [Raxis[2][0],Raxis[2][1],Raxis[2][2]]]
-
-    Laxis = [[cos(L_torsion)*Laxis[0][0]-sin(L_torsion)*Laxis[1][0],
-            cos(L_torsion)*Laxis[0][1]-sin(L_torsion)*Laxis[1][1],
-            cos(L_torsion)*Laxis[0][2]-sin(L_torsion)*Laxis[1][2]],
-            [sin(L_torsion)*Laxis[0][0]+cos(L_torsion)*Laxis[1][0],
-            sin(L_torsion)*Laxis[0][1]+cos(L_torsion)*Laxis[1][1],
-            sin(L_torsion)*Laxis[0][2]+cos(L_torsion)*Laxis[1][2]],
-            [Laxis[2][0],Laxis[2][1],Laxis[2][2]]]
-
-    # Add the origin back to the vector
-    x_axis = Raxis[0]+R
-    y_axis = Raxis[1]+R
-    z_axis = Raxis[2]+R
-    Raxis = [x_axis,y_axis,z_axis]
-
-    x_axis = Laxis[0]+L
-    y_axis = Laxis[1]+L
-    z_axis = Laxis[2]+L
-    Laxis = [x_axis,y_axis,z_axis]
+        # Rotate the axes about the tibia torsion.
+        cosine = np.cos(torsions[side])
+        sine = np.sin(torsions[side])
+        rotated_axis = [np.subtract(cosine * ankle_axis[0],
+                                    sine * ankle_axis[1]),
+                        np.add(sine * ankle_axis[0], cosine * ankle_axis[1]),
+                        ankle_axis[2]]
+        # Add the origin back to the vector
+        rotated_axes.append(np.add(rotated_axis, positions[side]))
 
     # Both of axis in array.
-    axis = [Raxis,Laxis]
+    return [positions[0], positions[1], rotated_axes]
 
-    return [R,L,axis]
 
-def footJointCenter(frame,static_info,ankle_JC,knee_JC,delta):
-    """Calculate the foot joint center and axis function.
+def foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center):
+    r"""Calculate the foot joint center and axis function.
 
     Takes in a dictionary of xyz positions and marker names, the ankle axis and
     knee axis.
@@ -1186,47 +872,88 @@ def footJointCenter(frame,static_info,ankle_JC,knee_JC,delta):
     Returns the foot axis origin and axis.
 
     In the case of the foot joint center, we've already made 2 kinds of axes
-    for the static offset angle and then, we call this static offset angle as an
-    input of this function for thedynamic trial.
+    for the static offset angle and then, we call this static offset angle as
+    an input of this function for the dynamic trial.
 
     Special Cases:
 
     (anatomically uncorrected foot axis)
     If flat foot, make the reference markers instead of HEE marker whose height
-    is the same as TOE marker's height. Else use the HEE marker for making Z axis.
+    is the same as TOE marker's height. Else use the HEE marker for making Z
+    axis.
 
-    Markers used: RTOE,LTOE,RHEE, LHEE
+    Markers used: RTOE,LTOE
     Other landmarks used: ANKLE_FLEXION_AXIS
-    Subject Measurement values used: RightStaticRotOff, RightStaticPlantFlex, LeftStaticRotOff, LeftStaticPlantFlex
+    Subject Measurement values used: RightStaticRotOff, RightStaticPlantFlex,
+    LeftStaticRotOff, LeftStaticPlantFlex
+
+    The incorrect foot joint axes for both feet are calculated using the
+    following calculations:
+        z-axis = ankle joint center - TOE marker
+        y-flex = ankle joint center flexion - ankle joint center
+        x-axis = y-flex cross z-axis
+        y-axis = z-axis cross x-axis
+    Calculate the foot joint axis by rotating incorrect foot joint axes
+    about offset angle.
+
+    .. math::
+
+        z_{axis} = ankle\_joint\_center - toe\_marker\\
+        flexion\_axis = ankle\_joint\_center\_flexion - ankle\_joint\_center\\
+        x_{axis} = flexion\_axis \times z_{axis}\\
+        y_{axis} = z_{axis} \times x_{axis}\\
+        \\
+        \text{Rotated about the } y_{axis} \text{:}\\
+        rotation = \begin{bmatrix}
+        cos(\beta) * x_{axis}[0] + sin(\beta) * z_{axis}[0] & cos(\beta)
+        * x_{axis}[1] + sin(\beta) * z_{axis}[1] & cos(\beta) * x_{axis}[2]
+        + sin(\beta) * z_{axis}[2\\
+        y_{axis}[0] & y_{axis}[1] & y_{axis}[2]\\
+        -sin(\beta) * x_{axis}[0] + cos(\beta) * z_{axis}[0] & -sin(\beta)
+        * x_{axis}[1] + cos(\beta) * z_{axis}[1] & -sin(\beta) * x_{axis}[2]
+        + cos(\beta) * z_{axis}[2]
+        \end{bmatrix}\\
+        \\
+        \text{Rotated about the } x_{axis} \text{:}\\
+        rotation = \begin{bmatrix}
+        cos(\alpha) * rotation[1][0] - sin(\alpha) * rotation[2][0]
+        & cos(\alpha) * rotation[1][1] - sin(\alpha) * rotation[2][1]
+        & cos(\alpha) * rotation[1][2] - sin(\alpha) * rotation[2][2]\\
+        y_{axis}[0] & y_{axis}[1] & y_{axis}[2]\\
+        sin(\alpha) * rotation[1][0] + cos(\alpha) * rotation[2][0]
+        & sin(\alpha) * rotation[1][1] + cos(\alpha) * rotation[2][1]
+        & sin(\alpha) * rotation[1][2] + cos(\alpha) * rotation[2][2]
+        \end{bmatrix}
 
     Parameters
     ----------
-    frame : dict
-        Dictionary of marker lists.
+    rtoe : array
+        Array of marker data.
+    ltoe : array
+        Array of marker data.
     static_info : array
         An array containing offset angles.
-    ankle_JC : array
-        An array of ankle_JC containing the x,y,z axes marker positions of the ankle joint center.
-    knee_JC : array
-        An array of ankle_JC containing the x,y,z axes marker positions of the knee joint center.
-    delta
-        The length from marker to joint center, retrieved from subject measurement file.
+    ankle_joint_center : array
+        An array containing the x,y,z axes marker positions of the
+        ankle joint center.
 
     Returns
     -------
-    R, L, foot_axis : list
-        Returns a list that contain the foot axis' (right and left) origin in 1x3 arrays
-        of xyz values and a 2x3x3 list composed of the foot axis center x, y, and z
-        axis components. The xyz axis components are 2x3 lists consisting of the axis center
-        in the first dimension and the direction of the axis in the second dimension.
-        This function also saves the static offset angle in a global variable.
+    rtoe, ltoe, foot_axis : array
+        Returns a list that contain the toe (right and left) markers in
+        1x3 arrays of xyz values and a 2x3x3 array composed of the foot axis
+        center x, y, and z axis components. The xyz axis components are 2x3
+        arrays consisting of the axis center in the first dimension and the
+        direction of the axis in the second dimension.
 
     Modifies
     --------
     Axis changes the following in the static info.
 
-    You can set the static_info with the button and this will calculate the offset angles.
-    The first setting, the foot axis shows the uncorrected foot anatomical reference axis(Z_axis point to the AJC from TOE).
+    You can set the static_info with the button and this will calculate the
+    offset angles.
+    The first setting, the foot axis shows the uncorrected foot anatomical
+    reference axis(Z_axis point to the AJC from TOE).
 
     If you press the static_info button so if static_info is not None,
     then the static offset angles are applied to the reference axis.
@@ -1235,220 +962,94 @@ def footJointCenter(frame,static_info,ankle_JC,knee_JC,delta):
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import footJointCenter
-    >>> frame = { 'RHEE': np.array([374.01, 181.58, 49.51]),
-    ...           'LHEE': np.array([105.30, 180.21, 47.16]),
-    ...           'RTOE': np.array([442.82, 381.62, 42.66]),
-    ...           'LTOE': np.array([39.44, 382.45, 41.79])}
-	>>> static_info = [[0.03, 0.15, 0],
-	...               [0.01, 0.02, 0]]
-    >>> knee_JC = [np.array([364.18, 292.17, 515.19]),
-    ...           np.array([143.55, 279.90, 524.78]),
-    ...           np.array([[[364.65, 293.07, 515.19],
-    ...           [363.29, 292.61, 515.04],
-    ...           [364.05, 292.24, 516.18]],
-    ...           [[143.66, 280.89, 524.63],
-    ...           [142.56, 280.02, 524.86],
-    ...           [143.65, 280.05, 525.77]]])]
-    >>> ankle_JC = [np.array([393.76, 247.68, 87.74]),
-    ...            np.array([98.75, 219.47, 80.63]),
-    ...            [[np.array([394.48, 248.37, 87.72]),
-    ...            np.array([393.07, 248.39, 87.62]),
-    ...            np.array([393.69, 247.78, 88.73])],
-    ...            [np.array([98.47, 220.43, 80.53]),
-    ...            np.array([97.79, 219.21, 80.76]),
-    ...            np.array([98.85, 219.60, 81.62])]]]
+    >>> from .static import foot_joint_center
+    >>> rtoe = np.array([442.82, 381.62, 42.66])
+    >>> ltoe = np.array([39.44, 382.45, 41.79])
+    >>> static_info = [[0.03, 0.15, 0],
+    ...                [0.01, 0.02, 0]]
+    >>> ankle_joint_center = [np.array([393.76, 247.68, 87.74]),
+    ...                       np.array([98.75, 219.47, 80.63]),
+    ...                       [[np.array([394.48, 248.37, 87.72]),
+    ...                         np.array([393.07, 248.39, 87.62]),
+    ...                         np.array([393.69, 247.78, 88.73])],
+    ...                        [np.array([98.47, 220.43, 80.53]),
+    ...                         np.array([97.79, 219.21, 80.76]),
+    ...                         np.array([98.85, 219.60, 81.62])]]]
     >>> delta = 0
-    >>> [np.around(arr,2) for arr in footJointCenter(frame,static_info,ankle_JC,knee_JC,delta)] #doctest: +NORMALIZE_WHITESPACE
-    [array([442.82, 381.62,  42.66]), array([ 39.44, 382.45,  41.79]), array([[[442.89, 381.76,  43.65],
+    >>> [np.around(arr,2) for arr in foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
+    [array([442.82, 381.62,  42.66]),
+     array([ 39.44, 382.45,  41.79]),
+     array([[[442.89, 381.76,  43.65],
             [441.89, 382.  ,  42.67],
             [442.45, 380.7 ,  42.82]],
            [[ 39.51, 382.68,  42.76],
             [ 38.5 , 382.15,  41.93],
             [ 39.76, 381.53,  41.99]]])]
     """
-    import math
+    toes = [rtoe, ltoe]
 
-      #REQUIRED MARKERS:
-      # RTOE
-      # LTOE
-      # RHEE
-      # LHEE
+    # Dealing with the Incorrect Axis
+    foot_axis = []
+    for side in range(2):  # calculate the left and right foot axes
+        # Z_axis taken from toe marker to Ankle Joint Center; then normalized.
+        z_axis = np.array(ankle_joint_center[side]) - np.array(toes[side])
+        z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
+        if z_axis_norm:
+            z_axis = np.divide(z_axis, z_axis_norm)
 
-    TOE_R = frame["RTOE"]
-    TOE_L = frame["LTOE"]
+        # Calculated flexion axis from Ankle Joint Center; then normalized.
+        flexion_axis = (np.array(ankle_joint_center[2][side][1])
+                        - np.array(ankle_joint_center[side]))
+        flexion_axis_norm = np.nan_to_num(np.linalg.norm(flexion_axis))
+        if flexion_axis_norm:
+            flexion_axis = np.divide(flexion_axis, flexion_axis_norm)
 
-    #REQUIRE JOINT CENTER & AXIS
-    #KNEE JOINT CENTER
-    #ANKLE JOINT CENTER
-    #ANKLE FLEXION AXIS
+        # X_axis taken from cross product of Z_axis and the flexion axis.
+        x_axis = np.cross(flexion_axis, z_axis)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
 
-    ankle_JC_R = ankle_JC[0]
-    ankle_JC_L = ankle_JC[1]
-    ankle_flexion_R = ankle_JC[2][0][1]
-    ankle_flexion_L = ankle_JC[2][1][1]
+        # Y_axis take from cross product of Z_axis and X_axis (perpendicular).
+        # Then normalized.
+        y_axis = np.cross(z_axis, x_axis)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
 
-    # Toe axis's origin is marker position of TOE
-    R = TOE_R
-    L = TOE_L
+        # Apply static offset angle to the incorrect foot axes
+        # static offset angle are taken from static_info variable in radians.
+        # N.B. This replaces a procedure that converted from radians to degrees
+        # and back to radians, the result was then rounded to 5 decimal places.
+        alpha = static_info[side][0]
+        beta = static_info[side][1]
 
-    # HERE IS THE INCORRECT AXIS
+        # Rotate incorrect foot axis around y axis first.
+        rotated_axis = [[(np.cos(beta) * x_axis[x] + np.sin(beta) * z_axis[x])
+                         for x in range(3)], y_axis,
+                        [(-np.sin(beta) * x_axis[x] + np.cos(beta) * z_axis[x])
+                         for x in range(3)]]
 
-    # the first setting, the foot axis show foot uncorrected anatomical axis and static_info is None
-    ankle_JC_R = [ankle_JC_R[0],ankle_JC_R[1],ankle_JC_R[2]]
-    ankle_JC_L = [ankle_JC_L[0],ankle_JC_L[1],ankle_JC_L[2]]
+        # Rotate incorrect foot axis around x axis next.
+        rotated_axis = [rotated_axis[0],
+                        [(np.cos(alpha) * rotated_axis[1][x] - np.sin(alpha)
+                         * rotated_axis[2][x]) for x in range(3)],
+                        [(np.sin(alpha) * rotated_axis[1][x] + np.cos(alpha)
+                         * rotated_axis[2][x]) for x in range(3)]]
 
-    # Right
+        # Attach each axis to the origin
+        foot_axis.append([np.array(axis) + np.array(toes[side])
+                          for axis in rotated_axis])
 
-    # z axis is from TOE marker to AJC. and normalized it.
-    R_axis_z = [ankle_JC_R[0]-TOE_R[0],ankle_JC_R[1]-TOE_R[1],ankle_JC_R[2]-TOE_R[2]]
-    R_axis_z_div = norm2d(R_axis_z)
-    R_axis_z = [R_axis_z[0]/R_axis_z_div,R_axis_z[1]/R_axis_z_div,R_axis_z[2]/R_axis_z_div]
+    return [rtoe, ltoe, foot_axis]
 
-    # bring the flexion axis of ankle axes from AnkleJointCenter function. and normalized it.
-    y_flex_R = [ankle_flexion_R[0]-ankle_JC_R[0],ankle_flexion_R[1]-ankle_JC_R[1],ankle_flexion_R[2]-ankle_JC_R[2]]
-    y_flex_R_div = norm2d(y_flex_R)
-    y_flex_R = [y_flex_R[0]/y_flex_R_div,y_flex_R[1]/y_flex_R_div,y_flex_R[2]/y_flex_R_div]
 
-    # x axis is calculated as a cross product of z axis and ankle flexion axis.
-    R_axis_x = cross(y_flex_R,R_axis_z)
-    R_axis_x_div = norm2d(R_axis_x)
-    R_axis_x = [R_axis_x[0]/R_axis_x_div,R_axis_x[1]/R_axis_x_div,R_axis_x[2]/R_axis_x_div]
-
-    # y axis is then perpendicularly calculated from z axis and x axis. and normalized.
-    R_axis_y = cross(R_axis_z,R_axis_x)
-    R_axis_y_div = norm2d(R_axis_y)
-    R_axis_y = [R_axis_y[0]/R_axis_y_div,R_axis_y[1]/R_axis_y_div,R_axis_y[2]/R_axis_y_div]
-
-    R_foot_axis = [R_axis_x,R_axis_y,R_axis_z]
-
-    # Left
-
-    # z axis is from TOE marker to AJC. and normalized it.
-    L_axis_z = [ankle_JC_L[0]-TOE_L[0],ankle_JC_L[1]-TOE_L[1],ankle_JC_L[2]-TOE_L[2]]
-    L_axis_z_div = norm2d(L_axis_z)
-    L_axis_z = [L_axis_z[0]/L_axis_z_div,L_axis_z[1]/L_axis_z_div,L_axis_z[2]/L_axis_z_div]
-
-    # bring the flexion axis of ankle axes from AnkleJointCenter function. and normalized it.
-    y_flex_L = [ankle_flexion_L[0]-ankle_JC_L[0],ankle_flexion_L[1]-ankle_JC_L[1],ankle_flexion_L[2]-ankle_JC_L[2]]
-    y_flex_L_div = norm2d(y_flex_L)
-    y_flex_L = [y_flex_L[0]/y_flex_L_div,y_flex_L[1]/y_flex_L_div,y_flex_L[2]/y_flex_L_div]
-
-    # x axis is calculated as a cross product of z axis and ankle flexion axis.
-    L_axis_x = cross(y_flex_L,L_axis_z)
-    L_axis_x_div = norm2d(L_axis_x)
-    L_axis_x = [L_axis_x[0]/L_axis_x_div,L_axis_x[1]/L_axis_x_div,L_axis_x[2]/L_axis_x_div]
-
-    # y axis is then perpendicularly calculated from z axis and x axis. and normalized.
-    L_axis_y = cross(L_axis_z,L_axis_x)
-    L_axis_y_div = norm2d(L_axis_y)
-    L_axis_y = [L_axis_y[0]/L_axis_y_div,L_axis_y[1]/L_axis_y_div,L_axis_y[2]/L_axis_y_div]
-
-    L_foot_axis = [L_axis_x,L_axis_y,L_axis_z]
-
-    foot_axis = [R_foot_axis,L_foot_axis]
-
-    # Apply static offset angle to the incorrect foot axes
-
-    # static offset angle are taken from static_info variable in radians.
-    R_alpha = static_info[0][0]*-1
-    R_beta = static_info[0][1]
-    #R_gamma = static_info[0][2]
-    L_alpha = static_info[1][0]
-    L_beta = static_info[1][1]
-    #L_gamma = static_info[1][2]
-
-    R_alpha = np.around(math.degrees(static_info[0][0]*-1),decimals=5)
-    R_beta = np.around(math.degrees(static_info[0][1]),decimals=5)
-    #R_gamma = np.around(math.degrees(static_info[0][2]),decimals=5)
-    L_alpha = np.around(math.degrees(static_info[1][0]),decimals=5)
-    L_beta = np.around(math.degrees(static_info[1][1]),decimals=5)
-    #L_gamma = np.around(math.degrees(static_info[1][2]),decimals=5)
-
-    R_alpha = -math.radians(R_alpha)
-    R_beta = math.radians(R_beta)
-    #R_gamma = 0
-    L_alpha = math.radians(L_alpha)
-    L_beta = math.radians(L_beta)
-    #L_gamma = 0
-
-    R_axis = [[(R_foot_axis[0][0]),(R_foot_axis[0][1]),(R_foot_axis[0][2])],
-              [(R_foot_axis[1][0]),(R_foot_axis[1][1]),(R_foot_axis[1][2])],
-              [(R_foot_axis[2][0]),(R_foot_axis[2][1]),(R_foot_axis[2][2])]]
-
-    L_axis = [[(L_foot_axis[0][0]),(L_foot_axis[0][1]),(L_foot_axis[0][2])],
-              [(L_foot_axis[1][0]),(L_foot_axis[1][1]),(L_foot_axis[1][2])],
-              [(L_foot_axis[2][0]),(L_foot_axis[2][1]),(L_foot_axis[2][2])]]
-
-    # rotate incorrect foot axis around y axis first.
-
-    # right
-    R_rotmat = [[(math.cos(R_beta)*R_axis[0][0]+math.sin(R_beta)*R_axis[2][0]),
-                (math.cos(R_beta)*R_axis[0][1]+math.sin(R_beta)*R_axis[2][1]),
-                (math.cos(R_beta)*R_axis[0][2]+math.sin(R_beta)*R_axis[2][2])],
-                [R_axis[1][0],R_axis[1][1],R_axis[1][2]],
-                [(-1*math.sin(R_beta)*R_axis[0][0]+math.cos(R_beta)*R_axis[2][0]),
-                (-1*math.sin(R_beta)*R_axis[0][1]+math.cos(R_beta)*R_axis[2][1]),
-                (-1*math.sin(R_beta)*R_axis[0][2]+math.cos(R_beta)*R_axis[2][2])]]
-    # left
-    L_rotmat = [[(math.cos(L_beta)*L_axis[0][0]+math.sin(L_beta)*L_axis[2][0]),
-                (math.cos(L_beta)*L_axis[0][1]+math.sin(L_beta)*L_axis[2][1]),
-                (math.cos(L_beta)*L_axis[0][2]+math.sin(L_beta)*L_axis[2][2])],
-                [L_axis[1][0],L_axis[1][1],L_axis[1][2]],
-                [(-1*math.sin(L_beta)*L_axis[0][0]+math.cos(L_beta)*L_axis[2][0]),
-                (-1*math.sin(L_beta)*L_axis[0][1]+math.cos(L_beta)*L_axis[2][1]),
-                (-1*math.sin(L_beta)*L_axis[0][2]+math.cos(L_beta)*L_axis[2][2])]]
-
-    # rotate incorrect foot axis around x axis next.
-
-    # right
-    R_rotmat = [[R_rotmat[0][0],R_rotmat[0][1],R_rotmat[0][2]],
-                [(math.cos(R_alpha)*R_rotmat[1][0]-math.sin(R_alpha)*R_rotmat[2][0]),
-                (math.cos(R_alpha)*R_rotmat[1][1]-math.sin(R_alpha)*R_rotmat[2][1]),
-                (math.cos(R_alpha)*R_rotmat[1][2]-math.sin(R_alpha)*R_rotmat[2][2])],
-                [(math.sin(R_alpha)*R_rotmat[1][0]+math.cos(R_alpha)*R_rotmat[2][0]),
-                (math.sin(R_alpha)*R_rotmat[1][1]+math.cos(R_alpha)*R_rotmat[2][1]),
-                (math.sin(R_alpha)*R_rotmat[1][2]+math.cos(R_alpha)*R_rotmat[2][2])]]
-
-    # left
-    L_rotmat = [[L_rotmat[0][0],L_rotmat[0][1],L_rotmat[0][2]],
-                [(math.cos(L_alpha)*L_rotmat[1][0]-math.sin(L_alpha)*L_rotmat[2][0]),
-                (math.cos(L_alpha)*L_rotmat[1][1]-math.sin(L_alpha)*L_rotmat[2][1]),
-                (math.cos(L_alpha)*L_rotmat[1][2]-math.sin(L_alpha)*L_rotmat[2][2])],
-                [(math.sin(L_alpha)*L_rotmat[1][0]+math.cos(L_alpha)*L_rotmat[2][0]),
-                (math.sin(L_alpha)*L_rotmat[1][1]+math.cos(L_alpha)*L_rotmat[2][1]),
-                (math.sin(L_alpha)*L_rotmat[1][2]+math.cos(L_alpha)*L_rotmat[2][2])]]
-
-    # Bring each x,y,z axis from rotation axes
-    R_axis_x = R_rotmat[0]
-    R_axis_y = R_rotmat[1]
-    R_axis_z = R_rotmat[2]
-    L_axis_x = L_rotmat[0]
-    L_axis_y = L_rotmat[1]
-    L_axis_z = L_rotmat[2]
-
-    # Attach each axis to the origin
-    R_axis_x = [R_axis_x[0]+R[0],R_axis_x[1]+R[1],R_axis_x[2]+R[2]]
-    R_axis_y = [R_axis_y[0]+R[0],R_axis_y[1]+R[1],R_axis_y[2]+R[2]]
-    R_axis_z = [R_axis_z[0]+R[0],R_axis_z[1]+R[1],R_axis_z[2]+R[2]]
-
-    R_foot_axis = [R_axis_x,R_axis_y,R_axis_z]
-
-    L_axis_x = [L_axis_x[0]+L[0],L_axis_x[1]+L[1],L_axis_x[2]+L[2]]
-    L_axis_y = [L_axis_y[0]+L[0],L_axis_y[1]+L[1],L_axis_y[2]+L[2]]
-    L_axis_z = [L_axis_z[0]+L[0],L_axis_z[1]+L[1],L_axis_z[2]+L[2]]
-
-    L_foot_axis = [L_axis_x,L_axis_y,L_axis_z]
-
-    foot_axis = [R_foot_axis,L_foot_axis]
-
-    return [R,L,foot_axis]
-
-def headJC(frame):
+def head_joint_center(frame):
     """Calculate the head joint axis function.
 
     Takes in a dictionary of x,y,z positions and marker names.
-    Calculates the head joint center and returns the head joint center and axis.
+    Calculates the head joint center and returns the head joint center and
+    axis.
 
     Markers used: LFHD, RFHD, LBHD, RBHD
 
@@ -1467,96 +1068,120 @@ def headJC(frame):
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import headJC
+    >>> from .static import head_joint_center
     >>> frame = {'RFHD': np.array([325.83, 402.55, 1722.5]),
     ...          'LFHD': np.array([184.55, 409.69, 1721.34]),
     ...          'RBHD': np.array([304.4, 242.91, 1694.97]),
     ...          'LBHD': np.array([197.86, 251.29, 1696.90])}
-    >>> [np.around(arr, 2) for arr in headJC(frame)] #doctest: +NORMALIZE_WHITESPACE
-    [array([[ 255.22,  407.11, 1722.08],
-            [ 254.19,  406.15, 1721.92],
-            [ 255.18,  405.96, 1722.91]]), array([ 255.19,  406.12, 1721.92])]
+    >>> [np.around(arr, 2) for arr in head_joint_center(frame)] #doctest: +NORMALIZE_WHITESPACE
+    [array([[ 255.35,  405.15, 1721.76],
+            [ 256.1 ,  405.71, 1721.86],
+            [ 255.93,  406.79, 1722.03]]), array([ 255.19,  406.12, 1721.92])]
     """
 
-    #Get the marker positions used for joint calculation
+    # Get the marker positions used for joint calculation
     LFHD = frame['LFHD']
     RFHD = frame['RFHD']
     LBHD = frame['LBHD']
     RBHD = frame['RBHD']
 
-    #get the midpoints of the head to define the sides
-    front = [(LFHD[0]+RFHD[0])/2.0, (LFHD[1]+RFHD[1])/2.0,(LFHD[2]+RFHD[2])/2.0]
-    back = [(LBHD[0]+RBHD[0])/2.0, (LBHD[1]+RBHD[1])/2.0,(LBHD[2]+RBHD[2])/2.0]
-    left = [(LFHD[0]+LBHD[0])/2.0, (LFHD[1]+LBHD[1])/2.0,(LFHD[2]+LBHD[2])/2.0]
-    right = [(RFHD[0]+RBHD[0])/2.0, (RFHD[1]+RBHD[1])/2.0,(RFHD[2]+RBHD[2])/2.0]
-    origin = front
+    # get the midpoints of the head to define the sides
+    front = [np.mean([LFHD[index], RFHD[index]]) for index in range(3)]
+    back = [np.mean([LBHD[index], RBHD[index]]) for index in range(3)]
+    left = [np.mean([LBHD[index], LFHD[index]]) for index in range(3)]
+    right = [np.mean([RFHD[index], RBHD[index]]) for index in range(3)]
 
-    #Get the vectors from the sides with primary x axis facing front
-    #First get the x direction
-    x_vec = [front[0]-back[0],front[1]-back[1],front[2]-back[2]]
-    x_vec_div = norm2d(x_vec)
-    x_vec = [x_vec[0]/x_vec_div,x_vec[1]/x_vec_div,x_vec[2]/x_vec_div]
+    # Get the vectors from the sides with primary x axis facing front
+    # First get the x direction
+    x_axis = np.subtract(front, back)
+    x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+    if x_axis_norm:
+        x_axis = np.divide(x_axis, x_axis_norm)
 
-    #get the direction of the y axis
-    y_vec = [left[0]-right[0],left[1]-right[1],left[2]-right[2]]
-    y_vec_div = norm2d(y_vec)
-    y_vec = [y_vec[0]/y_vec_div,y_vec[1]/y_vec_div,y_vec[2]/y_vec_div]
+    # get the direction of the y axis
+    y_axis = np.subtract(left, right)
+    y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+    if y_axis_norm:
+        y_axis = np.divide(y_axis, y_axis_norm)
 
     # get z axis by cross-product of x axis and y axis.
-    z_vec = cross(x_vec,y_vec)
-    z_vec_div = norm2d(z_vec)
-    z_vec = [z_vec[0]/z_vec_div,z_vec[1]/z_vec_div,z_vec[2]/z_vec_div]
+    z_axis = np.subtract(x_axis, y_axis)
+    z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
+    if z_axis_norm:
+        z_axis = np.divide(z_axis, z_axis_norm)
 
     # make sure all x,y,z axis is orthogonal each other by cross-product
-    y_vec = cross(z_vec,x_vec)
-    y_vec_div = norm2d(y_vec)
-    y_vec = [y_vec[0]/y_vec_div,y_vec[1]/y_vec_div,y_vec[2]/y_vec_div]
-    x_vec = cross(y_vec,z_vec)
-    x_vec_div = norm2d(x_vec)
-    x_vec = [x_vec[0]/x_vec_div,x_vec[1]/x_vec_div,x_vec[2]/x_vec_div]
+    y_axis = np.subtract(z_axis, x_axis)
+    y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+    if y_axis_norm:
+        y_axis = np.divide(y_axis, y_axis_norm)
+    x_axis = np.subtract(y_axis, z_axis)
+    x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+    if x_axis_norm:
+        x_axis = np.divide(x_axis, x_axis_norm)
 
-    #Add the origin back to the vector to get it in the right position
-    x_axis = [x_vec[0]+origin[0],x_vec[1]+origin[1],x_vec[2]+origin[2]]
-    y_axis = [y_vec[0]+origin[0],y_vec[1]+origin[1],y_vec[2]+origin[2]]
-    z_axis = [z_vec[0]+origin[0],z_vec[1]+origin[1],z_vec[2]+origin[2]]
+    # Add the origin back to the vector to get it in the right position
+    head_axis = [np.add(axis, front) for axis in [x_axis, y_axis, z_axis]]
 
-    head_axis =[x_axis,y_axis,z_axis]
+    result = [head_axis, front]
+    return result
 
-    #Return the three axis and origin
-    return [head_axis,origin]
 
-def uncorrect_footaxis(frame,ankle_JC):
-    """Calculate the anatomically uncorrected foot joint center and axis function.
+def uncorrect_footaxis(frame, ankle_joint_center):
+    """Calculate the anatomically uncorrected foot joint center and axis
+    function.
 
-    Takes in a dictionary of xyz positions and marker names
-    and takes the ankle axis.
+    Takes in a dictionary of xyz positions and marker names and takes the ankle
+    axis.
     Calculate the anatomical uncorrect foot axis.
 
     Markers used: RTOE, LTOE
+
+    Given a marker RTOE and the ankle JC, the right anatomically incorrect foot
+    axis is calculated with:
+
+    .. math::
+        R = [R_x + ROrigin_x, R_y + ROrigin_y, R_z + ROrigin_z]
+
+    where :math:`ROrigin_x` is the x coor of the foot axis's origin gotten
+    from frame['RTOE']
+
+    :math:`R_x` is the unit vector of :math:`Yflex_R \times R_z`
+
+    :math:`R_y` is the unit vector of :math:`R_z \times R_x`
+
+    :math:`R_z` is the unit vector of the axis from right toe to right ankle
+    joint center
+
+    :math:`Yflex_R` is the unit vector of the axis from right ankle flexion
+    to right ankle joint center
+
+    The same calculation applies for the left anatomically incorrect foot axis
+    by replacing all the right values with left values
 
     Parameters
     ----------
     frame : dict
         Dictionary of marker lists.
-    ankle_JC : array
-        An array of ankle_JC each x,y,z position.
+    ankle_joint_center : array
+        An array of ankle_joint_center each x,y,z position.
 
     Returns
     -------
     R, L, foot_axis : list
-        Returns a list representing the incorrect foot joint center, the list contains two 1x3 arrays
-        representing the foot axis origin x, y, z positions and a 3x2x3 list
-        containing the foot axis center in the first dimension and the direction of the
-        axis in the second dimension. This will be used for calculating static offset angle
-        in static calibration.
+        Returns a list representing the incorrect foot joint center, the list
+        contains two 1x3 arrays representing the foot axis origin x, y, z
+        positions and a 3x2x3 list containing the foot axis center in the first
+        dimension and the direction of the axis in the second dimension. This
+        will be used for calculating static offset angle in static calibration.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import uncorrect_footaxis
+    >>> from .static import uncorrect_footaxis
     >>> frame = { 'RTOE': [442.82, 381.62, 42.66],
     ...           'LTOE': [39.44, 382.45, 41.79]}
-    >>> ankle_JC = [np.array([393.76, 247.68, 87.74]),
+    >>> ankle_joint_center = [np.array([393.76, 247.68, 87.74]),
     ...            np.array([98.75, 219.47, 80.63]),
     ...            [[np.array([394.48, 248.37, 87.72]),
     ...            np.array([393.07, 248.39, 87.62]),
@@ -1564,7 +1189,7 @@ def uncorrect_footaxis(frame,ankle_JC):
     ...            [np.array([98.47, 220.43, 80.53]),
     ...            np.array([97.79, 219.21, 80.76]),
     ...            np.array([98.85, 219.60, 81.62])]]]
-    >>> [np.around(arr, 2) for arr in uncorrect_footaxis(frame,ankle_JC)] #doctest: +NORMALIZE_WHITESPACE
+    >>> [np.around(arr, 2) for arr in uncorrect_footaxis(frame,ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
     [array([442.82, 381.62,  42.66]),
     array([ 39.44, 382.45,  41.79]),
     array([[[442.94, 381.9 ,  43.61],
@@ -1574,275 +1199,225 @@ def uncorrect_footaxis(frame,ankle_JC):
             [ 38.5 , 382.14,  41.93],
             [ 39.77, 381.53,  42.01]]])]
     """
+    # Get global values
+    toes = [frame['RTOE'], frame['LTOE']]
+    foot_axes = []
+    for side in range(2):
+        # z axis is from Toe to AJC and normalized.
+        z_axis = np.subtract(ankle_joint_center[side], toes[side])
+        z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
+        if z_axis_norm:
+            z_axis = np.divide(z_axis, z_axis_norm)
 
-    #REQUIRED MARKERS:
-    # RTOE
-    # LTOE
-    # ankle_JC
-    TOE_R = frame['RTOE']
-    TOE_L = frame['LTOE']
+        # Bring flexion axis from ankle axis.
+        flexion_axis = np.subtract(ankle_joint_center[2][side][1],
+                                   ankle_joint_center[side])
+        flexion_axis_norm = np.nan_to_num(np.linalg.norm(flexion_axis))
+        if flexion_axis_norm:
+            flexion_axis = np.divide(flexion_axis, flexion_axis_norm)
 
-    ankle_JC_R = ankle_JC[0]
-    ankle_JC_L = ankle_JC[1]
-    ankle_flexion_R = ankle_JC[2][0][1]
-    ankle_flexion_L = ankle_JC[2][1][1]
+        # Calculate each x,y,z axis of foot using cross-product and make sure
+        # x,y,z axis is orthogonal each other.
+        x_axis = np.cross(flexion_axis, z_axis)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
 
-    # Foot axis's origin is marker position of TOE
-    R = TOE_R
-    L = TOE_L
+        y_axis = np.cross(z_axis, x_axis)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
 
-    # z axis is from Toe to AJC and normalized.
-    R_axis_z = [ankle_JC_R[0]-TOE_R[0],ankle_JC_R[1]-TOE_R[1],ankle_JC_R[2]-TOE_R[2]]
-    R_axis_z_div = norm2d(R_axis_z)
-    R_axis_z = [R_axis_z[0]/R_axis_z_div,R_axis_z[1]/R_axis_z_div,R_axis_z[2]/R_axis_z_div]
+        foot_axes.append([np.add(axis, toes[side])
+                          for axis in [x_axis, y_axis, z_axis]])
 
-    # Bring y flexion axis from ankle axis.
-    y_flex_R = [ankle_flexion_R[0]-ankle_JC_R[0],ankle_flexion_R[1]-ankle_JC_R[1],ankle_flexion_R[2]-ankle_JC_R[2]]
-    y_flex_R_div = norm2d(y_flex_R)
-    y_flex_R = [y_flex_R[0]/y_flex_R_div,y_flex_R[1]/y_flex_R_div,y_flex_R[2]/y_flex_R_div]
+    return [toes[0], toes[1], foot_axes]
 
-    # Calculate x axis by cross-product of ankle flexion axis and z axis.
-    R_axis_x = cross(y_flex_R,R_axis_z)
-    R_axis_x_div = norm2d(R_axis_x)
-    R_axis_x = [R_axis_x[0]/R_axis_x_div,R_axis_x[1]/R_axis_x_div,R_axis_x[2]/R_axis_x_div]
 
-    # Calculate y axis by cross-product of z axis and x axis.
-    R_axis_y = cross(R_axis_z,R_axis_x)
-    R_axis_y_div = norm2d(R_axis_y)
-    R_axis_y = [R_axis_y[0]/R_axis_y_div,R_axis_y[1]/R_axis_y_div,R_axis_y[2]/R_axis_y_div]
+def rotaxis_flat_foot(frame, ankle_joint_center, vsk=None):
+    r"""Calculate the anatomically correct foot joint center and axis function
+    for a flat foot.
 
-    # Attach each axes to origin.
-    R_axis_x = [R_axis_x[0]+R[0],R_axis_x[1]+R[1],R_axis_x[2]+R[2]]
-    R_axis_y = [R_axis_y[0]+R[0],R_axis_y[1]+R[1],R_axis_y[2]+R[2]]
-    R_axis_z = [R_axis_z[0]+R[0],R_axis_z[1]+R[1],R_axis_z[2]+R[2]]
-
-    R_foot_axis = [R_axis_x,R_axis_y,R_axis_z]
-
-    # Left
-
-    # z axis is from Toe to AJC and normalized.
-    L_axis_z = [ankle_JC_L[0]-TOE_L[0],ankle_JC_L[1]-TOE_L[1],ankle_JC_L[2]-TOE_L[2]]
-    L_axis_z_div = norm2d(L_axis_z)
-    L_axis_z = [L_axis_z[0]/L_axis_z_div,L_axis_z[1]/L_axis_z_div,L_axis_z[2]/L_axis_z_div]
-
-    # Bring y flexion axis from ankle axis.
-    y_flex_L = [ankle_flexion_L[0]-ankle_JC_L[0],ankle_flexion_L[1]-ankle_JC_L[1],ankle_flexion_L[2]-ankle_JC_L[2]]
-    y_flex_L_div = norm2d(y_flex_L)
-    y_flex_L = [y_flex_L[0]/y_flex_L_div,y_flex_L[1]/y_flex_L_div,y_flex_L[2]/y_flex_L_div]
-
-    # Calculate x axis by cross-product of ankle flexion axis and z axis.
-    L_axis_x = cross(y_flex_L,L_axis_z)
-    L_axis_x_div = norm2d(L_axis_x)
-    L_axis_x = [L_axis_x[0]/L_axis_x_div,L_axis_x[1]/L_axis_x_div,L_axis_x[2]/L_axis_x_div]
-
-    # Calculate y axis by cross-product of z axis and x axis.
-    L_axis_y = cross(L_axis_z,L_axis_x)
-    L_axis_y_div = norm2d(L_axis_y)
-    L_axis_y = [L_axis_y[0]/L_axis_y_div,L_axis_y[1]/L_axis_y_div,L_axis_y[2]/L_axis_y_div]
-
-    # Attach each axis to origin.
-    L_axis_x = [L_axis_x[0]+L[0],L_axis_x[1]+L[1],L_axis_x[2]+L[2]]
-    L_axis_y = [L_axis_y[0]+L[0],L_axis_y[1]+L[1],L_axis_y[2]+L[2]]
-    L_axis_z = [L_axis_z[0]+L[0],L_axis_z[1]+L[1],L_axis_z[2]+L[2]]
-
-    L_foot_axis = [L_axis_x,L_axis_y,L_axis_z]
-
-    foot_axis = [R_foot_axis,L_foot_axis]
-
-    return [R,L,foot_axis]
-
-def rotaxis_footflat(frame,ankle_JC,vsk=None):
-    """Calculate the anatomically correct foot joint center and axis function for a flat foot.
-
-    Takes in a dictionary of xyz positions and marker names
-    and the ankle axis then Calculates the anatomically
-    correct foot axis for a flat foot.
+    Takes in a dictionary of xyz positions and marker names and the ankle axis
+    then calculates the anatomically correct foot axis for a flat foot.
 
     Markers used: RTOE, LTOE, RHEE, LHEE
+
+    Given the right ankle_joint_center and the markers :math:`TOE_R` and
+    :math:`HEE_R`, the right anatomically correct foot axis is calculated with:
+
+    .. math::
+        R = [R_x + ROrigin_x, R_y + ROrigin_y, R_z + ROrigin_z]
+
+    where :math:`ROrigin_x` is the x coor of the foot axis's origin gotten
+    from frame['RTOE']
+
+    :math:`R_x` is the unit vector of
+    :math:`(AnkleFlexion_R - AnkleJC_R) \times R_z`
+
+    :math:`R_y` is the unit vector of :math:`R_z \times R_x`
+
+    :math:`R_z` is the unit vector of
+    :math:`(A \times (HEE_R - TOE_R)) \times A`
+
+    A is the unit vector of
+    :math:`(HEE_R - TOE_R) \times (AnkleJC_R - TOE_R)`
+
+    The same calculation applies for the left anatomically correct foot axis by
+    replacing all the right values with left values.
 
     Parameters
     ----------
     frame : array
         Dictionary of marker lists.
-    ankle_JC : array
-        An array of ankle_JC each x,y,z position.
+    ankle_joint_center : array
+        An array of ankle_joint_center each x,y,z position.
     vsk : dict, optional
         A dictionary containing subject measurements from a VSK file.
 
     Returns
     -------
-    R, L, foot_axis: list
-        Returns a list representing the correct foot joint center for a flat foot,
-        the list contains 2 1x3 arrays representing the foot axis origin x, y, z
-        positions and a 3x2x3 list containing the foot axis center in the first
-        dimension and the direction of the axis in the second dimension.
+    rtoe, ltoe, foot_axes: list
+        Returns a list representing the correct foot joint center for a flat
+        foot, the list contains 2 1x3 arrays representing the foot axis origin
+        x, y, z positions and a 3x2x3 list containing the foot axis center in
+        the first dimension and the direction of the axis in the second
+        dimension.
 
     Modifies
     --------
-    If the subject wears shoe, Soledelta is applied. then axes are changed following Soledelta.
+    If the subject wears shoe, Soledelta is applied. then axes are changed
+    following Soledelta.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import rotaxis_footflat
-    >>> frame = { 'RHEE': [374.01, 181.58, 49.51],
-    ...            'LHEE': [105.30, 180.21, 47.16],
-    ...            'RTOE': [442.82, 381.62, 42.66],
-    ...            'LTOE': [39.44, 382.45, 41.79]}
-    >>> ankle_JC = [np.array([393.76, 247.68, 87.74]),
-    ...            np.array([98.75, 219.47, 80.63]),
-    ...            [[np.array([394.48, 248.37, 87.72]),
-    ...            np.array([393.07, 248.39, 87.62]),
-    ...           np.array([393.69, 247.78, 88.73])],
-    ...            [np.array([98.48, 220.43, 80.53]),
-    ...            np.array([97.79, 219.21, 80.76]),
-    ...            np.array([98.85, 219.60, 81.62])]]]
+    >>> from .static import rotaxis_flat_foot
+    >>> frame = {'RHEE': [374.01, 181.58, 49.51],
+    ...          'LHEE': [105.30, 180.21, 47.16],
+    ...          'RTOE': [442.82, 381.62, 42.66],
+    ...          'LTOE': [39.44, 382.45, 41.79]}
+    >>> ankle_joint_center = [np.array([393.76, 247.68, 87.74]),
+    ...                       np.array([98.75, 219.47, 80.63]),
+    ...                       [[np.array([394.48, 248.37, 87.72]),
+    ...                         np.array([393.07, 248.39, 87.62]),
+    ...                         np.array([393.69, 247.78, 88.73])],
+    ...                         [np.array([98.48, 220.43, 80.53]),
+    ...                          np.array([97.79, 219.21, 80.76]),
+    ...                          np.array([98.85, 219.60, 81.62])]]]
     >>> vsk = { 'RightSoleDelta': 0.45, 'LeftSoleDelta': 0.45}
-    >>> [np.around(arr, 2) for arr in rotaxis_footflat(frame,ankle_JC,vsk)] #doctest: +NORMALIZE_WHITESPACE
+    >>> [np.around(arr, 2) for arr in rotaxis_flat_foot(frame, ankle_joint_center, vsk)] #doctest: +NORMALIZE_WHITESPACE
     [array([442.82, 381.62,  42.66]),
-    array([ 39.44, 382.45,  41.79]),
-    array([[[442.31, 381.8 ,  43.5 ],
-            [442.03, 381.89,  42.12],
-            [442.49, 380.67,  42.66]],
-           [[ 39.15, 382.36,  42.74],
-            [ 38.53, 382.16,  41.48],
-            [ 39.75, 381.5 ,  41.79]]])]
+     array([ 39.44, 382.45,  41.79]),
+     array([[[442.33, 381.82,  43.51],
+             [442.01, 381.88,  42.13],
+             [442.49, 380.67,  42.69]],
+            [[ 39.14, 382.38,  42.74],
+             [ 38.54, 382.15,  41.48],
+             [ 39.75, 381.5 ,  41.82]]])]
     """
-    #Get Global Values
+    # Get Global Values
+    toes = [frame['RTOE'], frame['LTOE']]
+    heels = [frame['RHEE'], frame['LHEE']]
+    sole_deltas = [vsk['RightSoleDelta'], vsk['LeftSoleDelta']]
+    foot_axes = []
+    for side in range(2):
+        # Toe axis's origin is marker position of TOE
+        ankle_joint_center[side][2] += sole_deltas[side]
 
-    R_sole_delta = vsk['RightSoleDelta']
-    L_sole_delta = vsk['LeftSoleDelta']
+        # For foot flat, Z axis pointing same height of TOE marker from TOE to
+        # the Ankle Joint Center
+        heel_to_toe = np.subtract(heels[side], toes[side])
+        heel_to_toe_norm = np.nan_to_num(np.linalg.norm(heel_to_toe))
+        if heel_to_toe_norm:
+            heel_to_toe = np.divide(heel_to_toe, heel_to_toe_norm)
 
-    #REQUIRED MARKERS:
-    # RTOE
-    # LTOE
-    # ankle_JC
+        # Bring flexion axis from ankle axis.
+        flexion_axis = np.subtract(ankle_joint_center[2][side][1],
+                                   ankle_joint_center[side])
+        flexion_axis_norm = np.nan_to_num(np.linalg.norm(flexion_axis))
+        if flexion_axis_norm:
+            flexion_axis = np.divide(flexion_axis, flexion_axis_norm)
 
-    TOE_R = frame['RTOE']
-    TOE_L = frame['LTOE']
-    HEE_R = frame['RHEE']
-    HEE_L = frame['LHEE']
-    ankle_JC_R = ankle_JC[0]
-    ankle_JC_L = ankle_JC[1]
-    ankle_flexion_R = ankle_JC[2][0][1]
-    ankle_flexion_L = ankle_JC[2][1][1]
+        # Calculate each x,y,z axis of foot using cross-product and make sure
+        # x,y,z axis is orthogonal each other.
+        x_axis = np.cross(flexion_axis, heel_to_toe)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
 
-    # Toe axis's origin is marker position of TOE
-    R = TOE_R
-    L = TOE_L
+        y_axis = np.cross(heel_to_toe, x_axis)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
 
-    ankle_JC_R = [ankle_JC_R[0],ankle_JC_R[1],ankle_JC_R[2]+R_sole_delta]
-    ankle_JC_L = [ankle_JC_L[0],ankle_JC_L[1],ankle_JC_L[2]+L_sole_delta]
+        z_axis = np.cross(x_axis, y_axis)
+        z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
+        if z_axis_norm:
+            z_axis = np.divide(z_axis, z_axis_norm)
 
-    # this is the way to calculate the z axis
-    R_axis_z = [ankle_JC_R[0]-TOE_R[0],ankle_JC_R[1]-TOE_R[1],ankle_JC_R[2]-TOE_R[2]]
-    R_axis_z = R_axis_z/norm3d(R_axis_z)
+        foot_axes.append([np.add(axis, toes[side])
+                          for axis in [x_axis, y_axis, z_axis]])
 
-    # For foot flat, Z axis pointing same height of TOE marker from TOE to AJC
-    hee2_toe =[HEE_R[0]-TOE_R[0],HEE_R[1]-TOE_R[1],TOE_R[2]-TOE_R[2]]
-    hee2_toe = hee2_toe/norm3d(hee2_toe)
-    A = cross(hee2_toe,R_axis_z)
-    A = A/norm3d(A)
-    B = cross(A,hee2_toe)
-    B = B/norm3d(B)
-    C = cross(B,A)
-    R_axis_z = C/norm3d(C)
+    return [toes[0], toes[1], foot_axes]
 
-    # Bring flexion axis from ankle axis.
-    y_flex_R = [ankle_flexion_R[0]-ankle_JC_R[0],ankle_flexion_R[1]-ankle_JC_R[1],ankle_flexion_R[2]-ankle_JC_R[2]]
-    y_flex_R = y_flex_R/norm3d(y_flex_R)
 
-    # Calculate each x,y,z axis of foot using cross-product and make sure x,y,z axis is orthogonal each other.
-    R_axis_x = cross(y_flex_R,R_axis_z)
-    R_axis_x = R_axis_x/norm3d(R_axis_x)
+def rotaxis_non_flat_foot(frame, ankle_joint_center):
+    """Calculate the anatomically correct foot joint center and axis function
+    for a non-flat foot.
 
-    R_axis_y = cross(R_axis_z,R_axis_x)
-    R_axis_y = R_axis_y/norm3d(R_axis_y)
-
-    R_axis_z = cross(R_axis_x,R_axis_y)
-    R_axis_z = R_axis_z/norm3d(R_axis_z)
-
-    # Attach each axis to origin.
-    R_axis_x = [R_axis_x[0]+R[0],R_axis_x[1]+R[1],R_axis_x[2]+R[2]]
-    R_axis_y = [R_axis_y[0]+R[0],R_axis_y[1]+R[1],R_axis_y[2]+R[2]]
-    R_axis_z = [R_axis_z[0]+R[0],R_axis_z[1]+R[1],R_axis_z[2]+R[2]]
-
-    R_foot_axis = [R_axis_x,R_axis_y,R_axis_z]
-
-    # Left
-
-    # this is the way to calculate the z axis of foot flat.
-    L_axis_z = [ankle_JC_L[0]-TOE_L[0],ankle_JC_L[1]-TOE_L[1],ankle_JC_L[2]-TOE_L[2]]
-    L_axis_z = L_axis_z/norm3d(L_axis_z)
-
-    # For foot flat, Z axis pointing same height of TOE marker from TOE to AJC
-    hee2_toe =[HEE_L[0]-TOE_L[0],HEE_L[1]-TOE_L[1],TOE_L[2]-TOE_L[2]]
-    hee2_toe = hee2_toe/norm3d(hee2_toe)
-    A = cross(hee2_toe,L_axis_z)
-    A = A/norm3d(A)
-    B = cross(A,hee2_toe)
-    B = B/norm3d(B)
-    C = cross(B,A)
-    L_axis_z = C/norm3d(C)
-
-    # Bring flexion axis from ankle axis.
-    y_flex_L = [ankle_flexion_L[0]-ankle_JC_L[0],ankle_flexion_L[1]-ankle_JC_L[1],ankle_flexion_L[2]-ankle_JC_L[2]]
-    y_flex_L = y_flex_L/norm3d(y_flex_L)
-
-    # Calculate each x,y,z axis of foot using cross-product and make sure x,y,z axis is orthogonal each other.
-    L_axis_x = cross(y_flex_L,L_axis_z)
-    L_axis_x = L_axis_x/norm3d(L_axis_x)
-
-    L_axis_y = cross(L_axis_z,L_axis_x)
-    L_axis_y = L_axis_y/norm3d(L_axis_y)
-
-    L_axis_z = cross(L_axis_x,L_axis_y)
-    L_axis_z = L_axis_z/norm3d(L_axis_z)
-
-    # Attach each axis to origin.
-    L_axis_x = [L_axis_x[0]+L[0],L_axis_x[1]+L[1],L_axis_x[2]+L[2]]
-    L_axis_y = [L_axis_y[0]+L[0],L_axis_y[1]+L[1],L_axis_y[2]+L[2]]
-    L_axis_z = [L_axis_z[0]+L[0],L_axis_z[1]+L[1],L_axis_z[2]+L[2]]
-
-    L_foot_axis = [L_axis_x,L_axis_y,L_axis_z]
-
-    foot_axis = [R_foot_axis,L_foot_axis]
-
-    return [R,L,foot_axis]
-
-def rotaxis_nonfootflat(frame,ankle_JC):
-    """Calculate the anatomically correct foot joint center and axis function for a non-flat foot.
-
-    Takes in a dictionary of xyz positions & marker names
-    and the ankle axis then calculates the anatomically
-    correct foot axis for a non-flat foot.
+    Takes in a dictionary of xyz positions & marker names and the ankle axis
+    then calculates the anatomically correct foot axis for a non-flat foot.
 
     Markers used: RTOE, LTOE, RHEE, LHEE
+
+    Given the right ankle joint center and the markers :math:`TOE_R` and
+    :math:`HEE_R , the right anatomically correct foot axis is calculated
+    with:
+
+    .. math::
+    R is [R_x + ROrigin_x, R_y + ROrigin_y, R_z + ROrigin_z]
+
+    where :math:`ROrigin_x` is the x coor of the foot axis's origin gotten
+    from frame['RTOE']
+
+    :math:`R_x` is the unit vector of :math:`YFlex_R \times R_z`
+
+    :math:`R_y` is the unit vector of :math:`R_z \times R_x`
+
+    :math:`R_z` is the unit vector of :math:`(HEE_R - TOE_R)`
+
+    :math:`YFlex_R` is the unit vector of
+    :math:`(AnkleFlexion_R - AnkleJC_R)`
+
+    The same calculation applies for the left anatomically correct foot
+    axis by replacing all the right values with left values.
 
     Parameters
     ----------
     frame : dict
         Dictionary of marker lists.
-    ankle_JC : array
-        An array of ankle_JC each x,y,z position.
+    ankle_joint_center : array
+        An array of ankle_joint_center each x,y,z position.
 
     Returns
     -------
     R, L, foot_axis: list
-        Returns a list representing the correct foot joint center for a non-flat foot,
-        the list contains two 1x3 arrays representing the foot axis origin x, y, z
-        positions and a 3x2x3 list containing the foot axis center in the first
-        dimension and the direction of the axis in the second dimension.
+        Returns a list representing the correct foot joint center for a
+        non-flat foot, the list contains two 1x3 arrays representing the foot
+        axis origin x, y, z positions and a 3x2x3 list containing the foot axis
+        center in the first dimension and the direction of the axis in the
+        second dimension.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import rotaxis_nonfootflat
+    >>> from .static import rotaxis_non_flat_foot
     >>> frame = { 'RHEE': [374.01, 181.58, 49.51],
     ...            'LHEE': [105.30, 180.21, 47.16],
     ...            'RTOE': [442.82, 381.62, 42.66],
     ...            'LTOE': [39.44, 382.45, 41.79]}
-    >>> ankle_JC = [np.array([393.76, 247.68, 87.74]),
+    >>> ankle_joint_center = [np.array([393.76, 247.68, 87.74]),
     ...            np.array([98.75, 219.47, 80.63]),
     ...            [[np.array([394.48, 248.37, 87.72]),
     ...            np.array([393.07, 248.39, 87.62]),
@@ -1850,361 +1425,188 @@ def rotaxis_nonfootflat(frame,ankle_JC):
     ...            [np.array([98.47, 220.43, 80.53]),
     ...            np.array([97.79, 219.21, 80.76]),
     ...            np.array([98.85, 219.60, 81.62])]]]
-    >>> [np.around(arr, 2) for arr in rotaxis_nonfootflat(frame,ankle_JC)] #doctest: +NORMALIZE_WHITESPACE
+    >>> [np.around(arr, 2) for arr in rotaxis_non_flat_foot(frame, ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
     [array([442.82, 381.62,  42.66]),
-    array([ 39.44, 382.45,  41.79]),
-    array([[[442.72, 381.69,  43.65],
-            [441.88, 381.94,  42.54],
-            [442.49, 380.67,  42.69]],
-           [[ 39.56, 382.51,  42.78],
-            [ 38.5 , 382.15,  41.92],
-            [ 39.75, 381.5 ,  41.82]]])]
+     array([ 39.44, 382.45,  41.79]),
+     array([[[442.72, 381.69,  43.65],
+             [441.88, 381.94,  42.54],
+             [442.49, 380.67,  42.69]],
+            [[ 39.56, 382.51,  42.78],
+             [ 38.5 , 382.15,  41.92],
+             [ 39.75, 381.5 ,  41.82]]])]
     """
+    # Get global values
+    toes = [frame['RTOE'], frame['LTOE']]
+    heels = [frame['RHEE'], frame['LHEE']]
+    foot_axes = []
+    for side in range(2):
+        # For foot flat, Z axis pointing same height of TOE marker from TOE to
+        # to the Ankle Joint Center
+        heel_to_toe = np.subtract(heels[side], toes[side])
+        heel_to_toe_norm = np.nan_to_num(np.linalg.norm(heel_to_toe))
+        if heel_to_toe_norm:
+            heel_to_toe = np.divide(heel_to_toe, heel_to_toe_norm)
 
-    #REQUIRED MARKERS:
-    # RTOE
-    # LTOE
-    # ankle_JC
-    TOE_R = frame['RTOE']
-    TOE_L = frame['LTOE']
-    HEE_R = frame['RHEE']
-    HEE_L = frame['LHEE']
+        # Bring flexion axis from ankle axis.
+        flexion_axis = np.subtract(ankle_joint_center[2][side][1],
+                                   ankle_joint_center[side])
+        flexion_axis_norm = np.nan_to_num(np.linalg.norm(flexion_axis))
+        if flexion_axis_norm:
+            flexion_axis = np.divide(flexion_axis, flexion_axis_norm)
 
-    ankle_JC_R = ankle_JC[0]
-    ankle_JC_L = ankle_JC[1]
-    ankle_flexion_R = ankle_JC[2][0][1]
-    ankle_flexion_L = ankle_JC[2][1][1]
+        # Calculate each x,y,z axis of foot using cross-product and make sure
+        # x,y,z axis is orthogonal each other.
+        x_axis = np.cross(flexion_axis, heel_to_toe)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
 
-    # Toe axis's origin is marker position of TOE
-    R = TOE_R
-    L = TOE_L
+        y_axis = np.cross(heel_to_toe, x_axis)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
 
-    ankle_JC_R = [ankle_JC_R[0],ankle_JC_R[1],ankle_JC_R[2]]
-    ankle_JC_L = [ankle_JC_L[0],ankle_JC_L[1],ankle_JC_L[2]]
+        z_axis = heel_to_toe
 
-    # in case of non foot flat we just use the HEE marker
-    R_axis_z = [HEE_R[0]-TOE_R[0],HEE_R[1]-TOE_R[1],HEE_R[2]-TOE_R[2]]
-    R_axis_z = R_axis_z/norm3d(R_axis_z)
+        foot_axes.append([np.add(axis, toes[side])
+                          for axis in [x_axis, y_axis, z_axis]])
 
-    y_flex_R = [ankle_flexion_R[0]-ankle_JC_R[0],ankle_flexion_R[1]-ankle_JC_R[1],ankle_flexion_R[2]-ankle_JC_R[2]]
-    y_flex_R = y_flex_R/norm3d(y_flex_R)
+    return [toes[0], toes[1], foot_axes]
 
-    R_axis_x = cross(y_flex_R,R_axis_z)
-    R_axis_x = R_axis_x/norm3d(R_axis_x)
 
-    R_axis_y = cross(R_axis_z,R_axis_x)
-    R_axis_y = R_axis_y/norm3d(R_axis_y)
-
-    R_axis_x = [R_axis_x[0]+R[0],R_axis_x[1]+R[1],R_axis_x[2]+R[2]]
-    R_axis_y = [R_axis_y[0]+R[0],R_axis_y[1]+R[1],R_axis_y[2]+R[2]]
-    R_axis_z = [R_axis_z[0]+R[0],R_axis_z[1]+R[1],R_axis_z[2]+R[2]]
-
-    R_foot_axis = [R_axis_x,R_axis_y,R_axis_z]
-
-    # Left
-
-    ankle_JC_R = [ankle_JC_R[0],ankle_JC_R[1],ankle_JC_R[2]]
-    ankle_JC_L = [ankle_JC_L[0],ankle_JC_L[1],ankle_JC_L[2]]
-
-    L_axis_z = [HEE_L[0]-TOE_L[0],HEE_L[1]-TOE_L[1],HEE_L[2]-TOE_L[2]]
-    L_axis_z = L_axis_z/norm3d(L_axis_z)
-
-    y_flex_L = [ankle_flexion_L[0]-ankle_JC_L[0],ankle_flexion_L[1]-ankle_JC_L[1],ankle_flexion_L[2]-ankle_JC_L[2]]
-    y_flex_L = y_flex_L/norm3d(y_flex_L)
-
-    L_axis_x = cross(y_flex_L,L_axis_z)
-    L_axis_x = L_axis_x/norm3d(L_axis_x)
-
-    L_axis_y = cross(L_axis_z,L_axis_x)
-    L_axis_y = L_axis_y/norm3d(L_axis_y)
-
-    L_axis_x = [L_axis_x[0]+L[0],L_axis_x[1]+L[1],L_axis_x[2]+L[2]]
-    L_axis_y = [L_axis_y[0]+L[0],L_axis_y[1]+L[1],L_axis_y[2]+L[2]]
-    L_axis_z = [L_axis_z[0]+L[0],L_axis_z[1]+L[1],L_axis_z[2]+L[2]]
-
-    L_foot_axis = [L_axis_x,L_axis_y,L_axis_z]
-
-    foot_axis = [R_foot_axis,L_foot_axis]
-
-    return [R,L,foot_axis]
-
-def getankleangle(axisP,axisD):
-    """Static angle calculation function.
+def get_ankle_angle(proximal_axis, distal_axis):
+    r"""Static angle calculation function.
 
     This function takes in two axes and returns three angles.
     It uses an inverse Euler rotation matrix in YXZ order.
     The output shows the angle in degrees.
 
-    Since we use arc sin we must check if the angle is in area between -pi/2 and pi/2
-    but because the static offset angle under pi/2, it doesn't matter.
+    Since we use arc tangent we must check if the angle is in area between
+    -pi/2 and pi/2 but because the static offset angle under pi/2, it doesn't
+    matter.
+
+    The alpha, beta, and gamma angles are defined as:
+    .. math::
+        \[ alpha = \arctan{\frac{M[2][1]}{\sqrt{M[2][0]^2 + M[2][2]^2}}} \]
+        \[ beta = \arctan{\frac{-M[2][0]}{M[2][2]}} \]
+        \[ gamma = \arctan{\frac{-M[0][1]}{M[1][1]}} \]
+    where M is the rotation matrix produced from multiplying distal_axis
+    and :math:`proximal_axis^{-1}`
 
     Parameters
     ----------
-    axisP : list
-        Shows the unit vector of axisP, the position of the proximal axis.
-    axisD : list
-        Shows the unit vector of axisD, the position of the distal axis.
+    proximal_axis : list
+        Shows the unit vector of proximal_axis, the position of the proximal
+        axis.
+    distal_axis : list
+        Shows the unit vector of distal_axis, the position of the distal axis.
 
     Returns
     -------
     angle : list
-        Returns the gamma, beta, alpha angles in degrees in a 1x3 corresponding list.
+        Returns the alpha, beta, gamma angles in degrees in a 1x3 corresponding
+        list.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import getankleangle
-    >>> axisP = [[ 0.59, 0.11, 0.16],
-    ...         [-0.13, -0.10, -0.90],
-    ...         [0.94, -0.05, 0.75]]
-    >>> axisD = [[0.17, 0.69, -0.37],
-    ...         [0.14, -0.39, 0.94],
-    ...         [-0.16, -0.53, -0.60]]
-    >>> np.around(getankleangle(axisP,axisD), 2)
+    >>> from .static import get_ankle_angle
+    >>> proximal_axis = [[ 0.59, 0.11, 0.16],
+    ...                  [-0.13, -0.10, -0.90],
+    ...                  [0.94, -0.05, 0.75]]
+    >>> distal_axis = [[0.17, 0.69, -0.37],
+    ...                [0.14, -0.39, 0.94],
+    ...                [-0.16, -0.53, -0.60]]
+    >>> np.around(get_ankle_angle(proximal_axis, distal_axis), 2)
     array([0.48, 1.  , 1.56])
     """
-    # make inverse matrix of axisP
-    axisPi = np.linalg.inv(axisP)
+    # make inverse matrix of proximal_axis
+    inverse_proximal_axis = np.linalg.pinv(proximal_axis)
 
-    # M is multiply of axisD and axisPi
-    M = matrixmult(axisD,axisPi)
+    # M is the multiplication of the distal_axis and the inverse_proximal_axis
+    M = np.matmul(distal_axis, inverse_proximal_axis)
 
     # This is the angle calculation in YXZ Euler angle
-    getA = M[2][1] / sqrt((M[2][0]*M[2][0])+(M[2][2]*M[2][2]))
-    getB = -1*M[2][0] / M[2][2]
-    getG = -1*M[0][1] / M[1][1]
+    alpha = np.arctan(M[2][1] / np.sqrt((M[2][0]**2)+(M[2][2]**2)))
+    beta = np.arctan(-M[2][0] / M[2][2])
+    gamma = np.arctan(-M[0][1] / M[1][1])
 
-    gamma =np.arctan(getG)
-    alpha = np.arctan(getA)
-    beta = np.arctan(getB)
+    return [alpha, beta, gamma]
 
-    angle = [alpha,beta,gamma]
-    return angle
 
-def findJointC(a, b, c, delta):
+def find_joint_center(marker_a, marker_b, marker_c, delta):
     """Calculate the Joint Center function.
 
-    This function is based on physical markers; a,b,c and the joint center which will be
-    calulcated in this function are all in the same plane.
+    This function is based on physical markers; marker_a,marker_b,marker_c and
+    the joint center which will be calulcated in this function are all in the
+    same plane.
 
     Parameters
     ----------
-    a,b,c : list
-        Three markers x, y, z position of a, b, c.
+    marker_a, marker_b, marker_c : list
+        Three markers x, y, z position of marker_a, marker_b, marker_c.
     delta : float
-        The length from marker to joint center, retrieved from subject measurement file.
+        The length from marker to joint center, retrieved from subject
+        measurement file.
 
     Returns
     -------
-    mr : array
-        Returns the Joint C x, y, z positions in a 1x3 list.
+    joint_center : array
+        Returns the joint center x, y, z positions in a 1x3 list.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from .pycgmStatic import findJointC
-    >>> a = [775.41, 788.65, 514.41]
-    >>> b = [424.57, 46.17, 305.73]
-    >>> c = [618.98, 848.86, 133.52]
+    >>> from .static import find_joint_center
+    >>> marker_a = [775.41, 788.65, 514.41]
+    >>> marker_b = [424.57, 46.17, 305.73]
+    >>> marker_c = [618.98, 848.86, 133.52]
     >>> delta = 42.5
-    >>> np.around(findJointC(a,b,c,delta), 2)
+    >>> np.around(find_joint_center(marker_a, marker_b, marker_c, delta), 2)
     array([599.66, 843.26,  96.08])
     """
     # make the two vector using 3 markers, which is on the same plane.
-    v1 = (a[0]-c[0],a[1]-c[1],a[2]-c[2])
-    v2 = (b[0]-c[0],b[1]-c[1],b[2]-c[2])
+    vector_1 = np.subtract(marker_a, marker_c)
+    vector_2 = np.subtract(marker_b, marker_c)
 
-    # v3 is cross vector of v1, v2
+    # vector_3 is cross vector of vector_1, vector_2
     # and then it normalized.
-    # v3 = cross(v1,v2)
-    v3 = [v1[1]*v2[2] - v1[2]*v2[1],v1[2]*v2[0] - v1[0]*v2[2],v1[0]*v2[1] - v1[1]*v2[0]]
-    v3_div = norm2d(v3)
-    v3 = [v3[0]/v3_div,v3[1]/v3_div,v3[2]/v3_div]
+    vector_3 = np.cross(vector_1, vector_2)
+    vector_3_norm = np.nan_to_num(np.linalg.norm(vector_3))
+    if vector_3_norm:
+        vector_3 = np.divide(vector_3, vector_3_norm)
 
-    m = [(b[0]+c[0])/2.0,(b[1]+c[1])/2.0,(b[2]+c[2])/2.0]
-    length = np.subtract(b,m)
-    length = norm2d(length)
+    centroid = np.mean([marker_b, marker_c], axis=0)
+    length = np.subtract(marker_b, centroid)
+    length = np.linalg.norm(length)
 
-    # iterate_acosdomain =  1 - ( delta/norm2d(v2) - int(delta/norm2d(v2)) )
+    theta = np.arccos(delta/np.linalg.norm(vector_2))
+    cosine = np.cos(theta*2)
+    sine = np.sin(theta*2)
 
-    # print "iterate_acosdomain:",iterate_acosdomain
+    ux = vector_3[0]
+    uy = vector_3[1]
+    uz = vector_3[2]
 
+    # this rotation matrix is called Rodrigues' rotation formula.
+    # In order to make a plane, at least 3 number of markers is required which
+    # means three physical markers on the segment can make a plane. then the
+    # orthogonal vector of the plane will be rotating axis. joint center is
+    # determined by rotating the one vector of plane around rotating axis.
 
-    theta = acos(delta/norm2d(v2))
+    # I'm not sure this is an actual implementation of a Rodrigues' rotation
+    # formula.
+    rot = np.array([[cosine+ux**2.0*(1.0-cosine), ux*uy*(1.0-cosine)-uz*sine,
+                     ux*uz*(1.0-cosine)+uy*sine],
+                    [uy*ux*(1.0-cosine)+uz*sine, cosine+uy**2.0*(1.0-cosine),
+                     uy*uz*(1.0-cosine)-ux*sine],
+                    [uz*ux*(1.0-cosine)-uy*sine, uz*uy*(1.0-cosine)+ux*sine,
+                     cosine+uz**2.0*(1.0-cosine)]])
 
-    cs = cos(theta*2)
-    sn = sin(theta*2)
+    rotated_axis = rot*(np.matrix(vector_2).transpose())
+    rotated_axis = rotated_axis * length/np.linalg.norm(rotated_axis)
 
-    ux = v3[0]
-    uy = v3[1]
-    uz = v3[2]
+    rotated_axis = [rotated_axis[0, 0], rotated_axis[1, 0], rotated_axis[2, 0]]
+    joint_center = np.add(rotated_axis, centroid)
 
-    # this rotation matrix is called Rodriques' rotation formula.
-    # In order to make a plane, at least 3 number of markers is required which means three physical markers on the segment can make a plane.
-    # then the orthogonal vector of the plane will be rotating axis.
-    # joint center is determined by rotating the one vector of plane around rotating axis.
-    rot = np.matrix([[cs+ux**2.0*(1.0-cs),ux*uy*(1.0-cs)-uz*sn,ux*uz*(1.0-cs)+uy*sn],
-                    [uy*ux*(1.0-cs)+uz*sn,cs+uy**2.0*(1.0-cs),uy*uz*(1.0-cs)-ux*sn],
-                    [uz*ux*(1.0-cs)-uy*sn,uz*uy*(1.0-cs)+ux*sn,cs+uz**2.0*(1.0-cs)]])
-    r = rot*(np.matrix(v2).transpose())
-    r = r* length/np.linalg.norm(r)
-
-    r = [r[0,0],r[1,0],r[2,0]]
-    mr = np.array([r[0]+m[0],r[1]+m[1],r[2]+m[2]])
-
-    return mr
-
-def norm2d(v):
-    """2D Vector normalization function
-
-    This function calculates the normalization of a 3-dimensional vector.
-
-    Parameters
-    ----------
-    v : list
-        A 3-element list.
-
-    Returns
-    -------
-    float
-        The normalization of the vector as a float.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import norm2d
-    >>> v = [50.0, 96.37, 264.85]
-    >>> np.around(norm2d(v), 2)
-    286.24
-    """
-    try:
-        return sqrt((v[0]*v[0]+v[1]*v[1]+v[2]*v[2]))
-    except:
-        return np.nan
-
-def norm3d(v):
-    """3D Vector normalization function
-
-    This function calculates the normalization of a 3-dimensional vector.
-
-    Parameters
-    ----------
-    v : list
-        A 3-element list.
-
-    Returns
-    -------
-    array
-        The normalization of the vector returned as a float in an array.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import norm3d
-    >>> v = [124.98, 368.64, 18.43]
-    >>> np.array(norm3d(v).round(2))
-    array(389.69)
-    """
-    try:
-        return np.asarray(sqrt((v[0]*v[0]+v[1]*v[1]+v[2]*v[2])))
-    except:
-        return np.nan
-
-def normDiv(v):
-    """Normalized divison function
-
-    This function calculates the normalization division of a 3-dimensional vector.
-
-    Parameters
-    ----------
-    v : list
-        A 3-element list.
-
-    Returns
-    -------
-    list
-        The divison normalization of the vector returned as a float in a list.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from .pycgmStatic import normDiv
-    >>> v = [1.45, 1.94, 2.49]
-    >>> np.around(normDiv(v), 2)
-    array([0.12, 0.16, 0.21])
-    """
-    try:
-        vec = sqrt((v[0]*v[0]+v[1]*v[1]+v[2]*v[2]))
-        v = [v[0]/vec,v[1]/vec,v[2]/vec]
-    except:
-        vec = np.nan
-
-    return [v[0]/vec,v[1]/vec,v[2]/vec]
-
-def matrixmult (A, B):
-    """Matrix multiplication function
-
-    This function returns the product of a matrix multiplication given two matrices.
-
-    Let the dimension of the matrix A be: m by n,
-    let the dimension of the matrix B be: p by q,
-    multiplication will only possible if n = p,
-    thus creating a matrix of m by q size.
-
-    Parameters
-    ----------
-    A : list
-        First matrix, in a 2D array format.
-    B : list
-        Second matrix, in a 2D array format.
-
-    Returns
-    -------
-    C : list
-        The product of the matrix multiplication.
-
-    Examples
-    --------
-    >>> from .pycgmStatic import matrixmult
-    >>> A = [[11,12,13],[14,15,16]]
-    >>> B = [[1,2],[3,4],[5,6]]
-    >>> matrixmult(A, B)
-    [[112, 148], [139, 184]]
-    """
-    C = [[0 for row in range(len(A))] for col in range(len(B[0]))]
-    for i in range(len(A)):
-        for j in range(len(B[0])):
-            for k in range(len(B)):
-                C[i][j] += A[i][k]*B[k][j]
-    return C
-
-def cross(a, b):
-    """Cross Product function
-
-    Given vectors a and b, calculate the cross product.
-
-    Parameters
-    ----------
-    a : list
-        First 3D vector.
-    b : list
-        Second 3D vector.
-
-    Returns
-    -------
-    c : list
-        The cross product of vector a and vector b.
-
-    Examples
-    --------
-    >>> from .pycgmStatic import cross
-    >>> a = [12.83, 61.25, 99.6]
-    >>> b = [14.8, 61.72, 95.44]
-    >>> np.around(cross(a, b), 2)
-    array([-301.61,  249.58, -114.63])
-    """
-    c = [a[1]*b[2] - a[2]*b[1],
-        a[2]*b[0] - a[0]*b[2],
-        a[0]*b[1] - a[1]*b[0]]
-
-    return c
+    return joint_center
