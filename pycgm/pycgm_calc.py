@@ -721,7 +721,7 @@ class CalcAxes():
 
         return np.asarray([r_axis, l_axis, r_wri_origin, l_wri_origin])
 
-    def rad_axis(self, r_elbow, l_elbow, r_elbow_jc, l_elbow_jc):
+    def rad_axis(self, r_elbow, l_elbow, r_wrist_jc, l_wrist_jc):
         r"""Calculate the wrist joint axis (Radius) function.
         Takes in the elbow axis to calculate each wrist joint axis and returns it.
 
@@ -788,8 +788,8 @@ class CalcAxes():
         r_elbow_flex = r_elbow[1, :3]
         l_elbow_flex = l_elbow[1, :3]
 
-        rwjc = r_elbow_jc[:3, 3]
-        lwjc = l_elbow_jc[:3, 3]
+        rwjc = r_wrist_jc[:3, 3]
+        lwjc = l_wrist_jc[:3, 3]
 
         # this is the axis of radius
         # right
@@ -834,7 +834,7 @@ class CalcAxes():
 
         return np.asarray([r_axis, l_axis])
 
-    def hand_axis(self, rwra, rwrb, lwra, lwrb, rfin, lfin, wrist_jc, r_hand_thickness, l_hand_thickness):
+    def hand_axis(self, rwra, rwrb, lwra, lwrb, rfin, lfin, r_wrist_jc, l_wrist_jc, r_hand_thickness, l_hand_thickness):
         r"""Calculate the Hand joint axis.
 
         Takes in markers that correspond to (x, y, z) positions of the current
@@ -931,8 +931,8 @@ class CalcAxes():
         lwri = [(lwra[0]+lwrb[0])/2.0, (lwra[1]+lwrb[1]) /
                 2.0, (lwra[2]+lwrb[2])/2.0]
 
-        rwjc = [wrist_jc[0][0][-1], wrist_jc[0][1][-1], wrist_jc[0][2][-1]]
-        lwjc = [wrist_jc[1][0][-1], wrist_jc[1][1][-1], wrist_jc[1][2][-1]]
+        rwjc = r_wrist_jc[:3, 3]
+        lwjc = l_wrist_jc[:3, 3]
 
         mm = 7.0
 
@@ -998,7 +998,7 @@ class CalcAxes():
         r_axis[2, :3] = z_axis
         r_axis[:3, 3] = rhnd
 
-        return [r_axis, l_axis]
+        return np.asarray([r_axis, l_axis])
 
 
 class CalcAngles():

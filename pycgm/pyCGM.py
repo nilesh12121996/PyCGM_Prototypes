@@ -84,7 +84,7 @@ class pyCGM():
                                     'head_axis': ['Head'],
                                     'thorax_axis': ['Thorax'],
                                     'clav_axis': ['RClav', 'LClav'],
-                                    'hum_axis': ['RHum', 'LHum', 'RHumJC', 'LHumJC'],
+                                    'hum_axis': ['RHum', 'LHum', 'RWristJC', 'LWristJC'],
                                     'rad_axis': ['RRad', 'LRad'],
                                     'hand_axis': ['RHand', 'LHand']}
 
@@ -202,12 +202,23 @@ class pyCGM():
                 # rad_axis/wrist_axis
                 self.Axis(self.axis_index('RHum')),
                 self.Axis(self.axis_index('LHum')),
-                self.Axis(self.axis_index('RHumJC')),
-                self.Axis(self.axis_index('LHumJC')),
+                self.Axis(self.axis_index('RWristJC')),
+                self.Axis(self.axis_index('LWristJC')),
             ],
 
             [
                 # hand_axis
+                #rwra, rwrb, lwra, lwrb, rfin, lfin, r_wrist_jc, l_wrist_jc, r_hand_thickness, l_hand_thickness
+                self.Marker(self.marker_slice('RWRA')),
+                self.Marker(self.marker_slice('RWRB')),
+                self.Marker(self.marker_slice('LWRA')),
+                self.Marker(self.marker_slice('LWRB')),
+                self.Marker(self.marker_slice('RFIN')),
+                self.Marker(self.marker_slice('LFIN')),
+                self.Axis(self.axis_index('RWristJC')),
+                self.Axis(self.axis_index('LWristJC')),
+                self.Measurement(self.measurement_value('RightHandThickness')),
+                self.Measurement(self.measurement_value('LeftHandThickness'))
             ],
         ]
 
@@ -417,7 +428,7 @@ class pyCGM():
         # list of default axis result names
 
         return ['Pelvis', 'RHipJC', 'LHipJC', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
-                'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RHumJC', 'LHumJC', 'RRad', 'LRad', 'RHand', 'LHand']
+                'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RWristJC', 'LWristJC', 'RRad', 'LRad', 'RHand', 'LHand']
 
     def check_robo_results_accuracy(self, axis_results):
         # test unstructured pelvis axes against existing csv output file
