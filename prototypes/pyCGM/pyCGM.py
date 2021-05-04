@@ -14,7 +14,7 @@ class pyCGM():
     def __init__(self, measurements, static_trial, dynamic_trial):
 
         # measurements are a dict, marker data is flat [xyzxyz...] per frame
-        self.measurements = static.getStatic(static_trial, dict(zip(measurements[0], measurements[1]))) 
+        self.measurements = static.get_static(static_trial, dict(zip(measurements[0], measurements[1]))) 
         self.marker_data = np.array([np.asarray(list(frame.values())).flatten() for frame in dynamic_trial])
 
         # map the list of marker names to slices
