@@ -41,7 +41,23 @@ class CalcAxes():
 
         return pelvis
 
-    def hip_axis(self, r_hip_jc, l_hip_jc, pelvis_axis):
+    def hip_axis(
+        self,
+        pelvis_axis,
+        mean_leg_length,
+        right_asis_to_trochanter,
+        left_asis_to_trochanter,
+        interAsisMeasure
+    ):
+
+        r_hip_jc, l_hip_jc = CalcUtils.hip_joint_center(
+            pelvis_axis,
+            mean_leg_length,
+            right_asis_to_trochanter,
+            left_asis_to_trochanter,
+            interAsisMeasure
+        )
+
         # Get shared hip axis, it is inbetween the two hip joint centers
         hipaxis_center = (np.asarray(r_hip_jc) + np.asarray(l_hip_jc)) / 2.0
 
@@ -1642,3 +1658,121 @@ class CalcUtils:
             [r_vec[0]+mid[0], r_vec[1]+mid[1], r_vec[2]+mid[2]])
 
         return joint_center
+
+    @staticmethod
+    def hip_joint_center(pelvis, mean_leg_length, right_asis_to_trochanter, left_asis_to_trochanter, interAsisMeasure):
+        u"""Get the right and left hip joint center.
+        Takes in a 4x4 affine matrix of pelvis axis and subject measurements
+        dictionary. Calculates and returns the left and right hip joint centers.
+        Subject Measurement values used: MeanLegLength, R_AsisToTrocanterMeasure,
+        InterAsisDistance, L_AsisToTrocanterMeasure
+        Hip Joint Center: Computed using Hip Joint Center Calculation [1]_.
+        Parameters
+        ----------
+        pelvis : array
+            A 4x4 affine matrix with pelvis x, y, z axes and pelvis origin.
+        subject : dict
+            A dictionary containing subject measurements.
+        Returns
+        -------
+        hip_jc : array
+            A 2x3 array that contains two 1x3 arrays
+            containing the x, y, z components of the left and right hip joint
+            centers.
+        References
+        ----------
+        .. [1] Davis, R. B., III, Õunpuu, S., Tyburski, D. and Gage, J. R. (1991).
+                A gait analysis data collection and reduction technique.
+                Human Movement Science 10 575–87.
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from .axis import hip_joint_center
+        >>> vsk = {'MeanLegLength': 940.0, 'R_AsisToTrocanterMeasure': 72.51,
+        ...        'L_AsisToTrocanterMeasure': 72.51, 'InterAsisDistance': 215.90}
+        >>> pelvis_axis = np.array([
+        ...     [0.14, 0.98, -0.11, 251.60],
+        ...     [-0.99, 0.13, -0.02, 391.74],
+        ...     [0, 0.1, 0.99, 1032.89],
+        ...     [0, 0, 0, 1]
+        ... ])
+        >>> np.around(hip_joint_center(pelvis_axis,vsk), 2) #doctest: +NORMALIZE_WHITESPACE
+        array([[181.71, 340.33, 936.18],
+        [307.36, 323.83, 938.72]])
+        """
+
+        # Requires
+        # pelvis axis
+
+        pel_origin = pelvis[:3, 3]
+
+        # Model's eigen value
+        #
+        # LegLength
+        # MeanLegLength
+        # mm (marker radius)
+        # interAsisMeasure
+
+        # Set the variables needed to calculate the joint angle
+        # Half of marker size
+        mm = 7.0
+
+        mean_leg_length = subject['MeanLegLength']
+        right_asis_to_trochanter = subject['R_AsisToTrocanterMeasure']
+        left_asis_to_trochanter = subject['L_AsisToTrocanterMeasure']
+        interAsisMeasure = subject['InterAsisDistance']
+        C = (mean_leg_length * 0.115) - 15.3
+        theta = 0.500000178813934
+        beta = 0.314000427722931
+        aa = interAsisMeasure/2.0
+        S = -1
+
+        # Hip Joint Center Calculation (ref. Davis_1991)
+
+        # Left: Calculate the distance to translate along the pelvis axis
+        L_Xh = (-left_asis_to_trochanter - mm) * \
+            math.cos(beta) + C * math.cos(theta) * math.sin(beta)
+        L_Yh = S*(C*math.sin(theta) - aa)
+        L_Zh = (-left_asis_to_trochanter - mm) * \
+            math.sin(beta) - C * math.cos(theta) * math.cos(beta)
+
+        # Right:  Calculate the distance to translate along the pelvis axis
+        R_Xh = (-right_asis_to_trochanter - mm) * \
+            math.cos(beta) + C * math.cos(theta) * math.sin(beta)
+        R_Yh = (C*math.sin(theta) - aa)
+        R_Zh = (-right_asis_to_trochanter - mm) * \
+            math.sin(beta) - C * math.cos(theta) * math.cos(beta)
+
+        # get the unit pelvis axis
+        pelvis_xaxis = pelvis[0, :3]
+        pelvis_yaxis = pelvis[1, :3]
+        pelvis_zaxis = pelvis[2, :3]
+        pelvis_axis = pelvis[:3, :3]
+
+        # multiply the distance to the unit pelvis axis
+        left_hip_jc_x = pelvis_xaxis * L_Xh
+        left_hip_jc_y = pelvis_yaxis * L_Yh
+        left_hip_jc_z = pelvis_zaxis * L_Zh
+        # left_hip_jc = left_hip_jc_x + left_hip_jc_y + left_hip_jc_z
+
+        left_hip_jc = np.asarray([
+            left_hip_jc_x[0]+left_hip_jc_y[0]+left_hip_jc_z[0],
+            left_hip_jc_x[1]+left_hip_jc_y[1]+left_hip_jc_z[1],
+            left_hip_jc_x[2]+left_hip_jc_y[2]+left_hip_jc_z[2]
+        ])
+
+        left_hip_jc = pelvis_axis.T @ np.array([L_Xh, L_Yh, L_Zh])
+
+        R_hipJCx = pelvis_xaxis * R_Xh
+        R_hipJCy = pelvis_yaxis * R_Yh
+        R_hipJCz = pelvis_zaxis * R_Zh
+        right_hip_jc = R_hipJCx + R_hipJCy + R_hipJCz
+
+        right_hip_jc = pelvis_axis.T @ np.array([R_Xh, R_Yh, R_Zh])
+
+        left_hip_jc = left_hip_jc+pel_origin
+        right_hip_jc = right_hip_jc+pel_origin
+
+        hip_jc = np.array([left_hip_jc, right_hip_jc])
+
+        return hip_jc

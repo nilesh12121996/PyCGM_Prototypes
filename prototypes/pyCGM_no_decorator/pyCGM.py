@@ -114,6 +114,13 @@ class pyCGM():
 
             [
                 # hip_axis
+                self.Axis(self.axis_index('Pelvis')),
+                self.Measurement(self.measurement_value('MeanLegLength')),
+                self.Measurement(self.measurement_value(
+                    'R_AsisToTrocanterMeasure')),
+                self.Measurement(self.measurement_value(
+                    'L_AsisToTrocanterMeasure')),
+                self.Measurement(self.measurement_value('InterAsisDistance')),
             ],
 
             [
