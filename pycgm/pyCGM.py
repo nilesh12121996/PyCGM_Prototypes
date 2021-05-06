@@ -159,10 +159,12 @@ class pyCGM():
 
             [
                 # foot_axis
+                # no function?
             ],
 
             [
                 # head_axis
+                # no function?
             ],
 
             [
@@ -175,14 +177,11 @@ class pyCGM():
 
             [
                 # clav_axis/shoulder_axis
-                # self.Axis(self.axis_index('RClav')),
-                # self.Axis(self.axis_index('LClav')),
+                # no function?
             ],
 
             [
                 # hum_axis/elbow_joint_center
-                # self.Marker(self.marker_slice('RSHO')),
-                # self.Marker(self.marker_slice('LSHO')),
                 self.Marker(self.marker_slice('RELB')),
                 self.Marker(self.marker_slice('LELB')),
                 self.Marker(self.marker_slice('RWRA')),
@@ -208,7 +207,6 @@ class pyCGM():
 
             [
                 # hand_axis
-                #rwra, rwrb, lwra, lwrb, rfin, lfin, r_wrist_jc, l_wrist_jc, r_hand_thickness, l_hand_thickness
                 self.Marker(self.marker_slice('RWRA')),
                 self.Marker(self.marker_slice('RWRB')),
                 self.Marker(self.marker_slice('LWRA')),
@@ -226,53 +224,88 @@ class pyCGM():
 
             [
                 # pelvis_angle
-                self.Measurement(
-                    self.measurement_value('GCS')),
+                self.Measurement(self.measurement_value('GCS')),
                 self.Axis(self.axis_index('Pelvis'))
             ],
 
             [
                 # hip_angle
+                self.Axis(self.axis_index('Hip')),
+                self.Axis(self.axis_index('RKnee')),
+                self.Axis(self.axis_index('Hip')),
+                self.Axis(self.axis_index('LKnee'))
             ],
 
             [
                 # knee_angle
+                self.Axis(self.axis_index('RKnee')),
+                self.Axis(self.axis_index('RAnkle')),
+                self.Axis(self.axis_index('LKnee')),
+                self.Axis(self.axis_index('LAnkle'))
             ],
 
             [
                 # ankle_angle
+                self.Axis(self.axis_index('RAnkle')),
+                self.Axis(self.axis_index('RFoot')),
+                self.Axis(self.axis_index('LAnkle')),
+                self.Axis(self.axis_index('LFoot'))
             ],
 
             [
                 # foot_angle
+                self.Measurement(self.measurement_value('GCS')),
+                self.Axis(self.axis_index('RFoot')),
+                self.Measurement(self.measurement_value('GCS')),
+                self.Axis(self.axis_index('LFoot'))
             ],
 
             [
                 # head_angle
+                self.Measurement(self.measurement_value('GCS')),
+                self.Axis(self.axis_index('Head'))
             ],
 
             [
                 # thorax_angle
+                self.Measurement(self.measurement_value('GCS')),
+                self.Axis(self.axis_index('Thorax'))
             ],
 
             [
                 # neck_angle
+                self.Axis(self.axis_index('Head')),
+                self.Axis(self.axis_index('Thorax'))
             ],
 
             [
                 # spine_angle
+                self.Axis(self.axis_index('Pelvis')),
+                self.Axis(self.axis_index('Thorax'))
             ],
 
             [
                 # shoulder_angle
+                self.Axis(self.axis_index('Thorax')),
+                self.Axis(self.axis_index('RHum')),
+                self.Axis(self.axis_index('Thorax')),
+                self.Axis(self.axis_index('LHum'))
             ],
 
             [
                 # elbow_angle
+                self.Axis(self.axis_index('RHum')),
+                self.Axis(self.axis_index('RRad')),
+                self.Axis(self.axis_index('LHum')),
+                self.Axis(self.axis_index('LRad'))
             ],
 
             [
                 # wrist_angle
+                self.Axis(self.axis_index('RRad')),
+                self.Axis(self.axis_index('RHand')),
+                self.Axis(self.axis_index('LRad')),
+                self.Axis(self.axis_index('LHand'))
             ]
         ]
 
@@ -439,13 +472,14 @@ class pyCGM():
         pelvis_OXYZ = [row[58:70] for row in actual_results]
         accurate = True
         for i, frame in enumerate(pelvis_OXYZ):
+            origin = axis_results[i][0][:3, 3]
             if not np.allclose(frame[:3], axis_results[i][0][:3, 3]):
                 accurate = False
-            if not np.allclose(frame[3:6], axis_results[i][0][0, :3]):
+            if not np.allclose(frame[3:6], axis_results[i][0][0, :3] + origin):
                 accurate = False
-            if not np.allclose(frame[6:9], axis_results[i][0][1, :3]):
+            if not np.allclose(frame[6:9], axis_results[i][0][1, :3] + origin):
                 accurate = False
-            if not np.allclose(frame[9:12], axis_results[i][0][2, :3]):
+            if not np.allclose(frame[9:12], axis_results[i][0][2, :3] + origin):
                 accurate = False
         print('All pelvis results in line with RoboResults_pycgm.csv: ', accurate)
 
@@ -553,33 +587,19 @@ class pyCGM():
         for index, func in enumerate(self.axis_funcs):
             axis_params = []
 
-            print(f"====={func.__name__}=====")
 
             for i, param in enumerate(self.axis_func_parameters[index]):
-                print("params")
                 if isinstance(param, self.Marker):  # marker data slice
                     axis_params.append(frame[param.slice])
                 elif isinstance(param, self.Measurement):  # measurement value
                     axis_params.append(param.value)
                 elif isinstance(param, self.Axis):  # axis mapping index
-                    print('========================')
-                    # print()
-                    # print(axis_results)
-                    print()
-                    print(len(axis_results))
-                    # print(self.axis_funcs)
-                    # print()
-                    # print(self.axis_mapping)
-                    print()
-                    print(param.index)
-                    print()
                     axis_params.append(axis_results[param.index])
                 else:
                     axis_params.append(param)
 
-            ret_axes = func(*axis_params)
+            ret_axes = np.asarray(func(*axis_params))
 
-            print(ret_axes.ndim)
             if ret_axes.ndim == 3:  # multiple axes returned by one function
                 for axis in ret_axes:
                     axis_results.append(axis)
@@ -600,7 +620,7 @@ class pyCGM():
                 else:
                     angle_params.append(param)
 
-            ret_angles = func(*angle_params)
+            ret_angles = np.asarray(func(*angle_params))
 
             if ret_angles.ndim == 2:  # multiple angles returned by one function
                 for angle in ret_angles:

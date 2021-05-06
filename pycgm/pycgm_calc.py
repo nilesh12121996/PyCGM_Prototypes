@@ -27,11 +27,6 @@ class CalcAxes():
         x_axis = beta3/np.linalg.norm(beta3)
         z_axis = np.cross(x_axis, y_axis)
 
-        # I added these back to check for correctness
-        y_axis = y_axis+origin
-        z_axis = z_axis+origin
-        x_axis = x_axis+origin
-
         pelvis = np.zeros((4, 4))
         pelvis[3, 3] = 1.0
         pelvis[0, :3] = x_axis
@@ -555,7 +550,6 @@ class CalcAxes():
         lwri = [(lwra[0]+lwrb[0])/2.0, (lwra[1]+lwrb[1]) /
                 2.0, (lwra[2]+lwrb[2])/2.0]
 
-        print(r_shoulder_jc)
         rsjc = r_shoulder_jc[:3, 3]
         lsjc = l_shoulder_jc[:3, 3]
 
@@ -1267,7 +1261,7 @@ class CalcAngles():
 
         angle = [alpha, beta, gamma]
 
-        return angle
+        return np.asarray(angle)
 
     def thorax_angle(self, axis_p, axis_d):
         r"""Normal angle calculation.
@@ -1349,7 +1343,7 @@ class CalcAngles():
 
         angle = [180.0 * beta / pi, 180.0 * gamma / pi, 180.0 * alpha / pi]
 
-        return angle
+        return np.asarray(angle)
 
     def shoulder_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
         r"""Shoulder angle calculation.
