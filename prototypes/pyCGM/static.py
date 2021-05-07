@@ -156,9 +156,9 @@ def get_static(motionData, vsk, flat_foot=False, GCS=None):
     calSM['LeftHandThickness'] = vsk['LeftHandThickness']
 
     for frame in motionData:
-        pelvis_origin, pelvis_axis, sacrum = pelvis_joint_center(frame)
-        hip = hip_joint_center(frame, pelvis_origin, pelvis_axis[0],
-                               pelvis_axis[1], pelvis_axis[2], calSM)
+        pelvis = pelvis_joint_center(frame)
+        hip = hip_joint_center(frame, pelvis[:3, 3], pelvis[0, :3],
+                               pelvis[1, :3], pelvis[2, :3], calSM)
         knee = knee_joint_center(frame, hip, 0, vsk=calSM)
         ankle = ankle_joint_center(frame, knee, 0, vsk=calSM)
         angle = get_static_angle(frame, ankle, knee, flat_foot, calSM)
@@ -353,9 +353,8 @@ def get_static_angle(frame, ankle_joint_center, knee_joint_center,
     ...           [143.65, 280.05, 525.77]]])]
     >>> flat_foot = True
     >>> vsk = { 'RightSoleDelta': 0.45,'LeftSoleDelta': 0.45 }
-    >>> np.around(get_static_angle(frame, ankle_joint_center, knee_joint_center, flat_foot, vsk), 2)
-    array([[-0.08,  0.2 , -0.65],
-           [-0.67,  0.19, -0.32]])
+    >>> [np.around(arr, 2) for arr in get_static_angle(frame, ankle_joint_center, knee_joint_center, flat_foot, vsk)]
+    [array([-0.08,  0.2 , -0.65]), array([-0.67,  0.19, -0.32])]
     >>> flat_foot = False # Using the same variables and switching the flat_foot flag.
     >>> np.around(get_static_angle(frame, ankle_joint_center, knee_joint_center, flat_foot, vsk), 2)
     array([[ 0.03,  0.22, -0.16],
@@ -366,25 +365,21 @@ def get_static_angle(frame, ankle_joint_center, knee_joint_center,
     uncorrect = uncorrect_footaxis(frame, ankle_joint_center)
 
     # make the array which will be the input of findangle function
-    right_uncorrect = np.vstack([np.subtract(uncorrect[2][0][x], uncorrect[0])
-                                 for x in range(3)])
-    left_uncorrect = np.vstack([np.subtract(uncorrect[2][1][x], uncorrect[1])
-                                for x in range(3)])
+    right_uncorrect = uncorrect[0]
+    left_uncorrect = uncorrect[1]
 
     # Check if it is flat foot or not.
     if not flat_foot:
-        rotaxis = rotaxis_non_flat_foot(frame, ankle_joint_center)[2]
+        rotaxis = rotaxis_non_flat_foot(frame, ankle_joint_center)
     elif flat_foot:
-        rotaxis = rotaxis_flat_foot(frame, ankle_joint_center, vsk=vsk)[2]
+        rotaxis = rotaxis_flat_foot(frame, ankle_joint_center, vsk=vsk)
 
     # make the array to same format for calculating angle.
-    right_axis = np.vstack([np.subtract(rotaxis[0][x], uncorrect[0])
-                            for x in range(3)])
-    left_axis = np.vstack([np.subtract(rotaxis[1][x], uncorrect[1])
-                           for x in range(3)])
+    right_axis = rotaxis[0]
+    left_axis = rotaxis[1]
 
-    angle = [get_ankle_angle(right_uncorrect, right_axis),
-             get_ankle_angle(left_uncorrect, left_axis)]
+    angle = [get_ankle_angle(left_uncorrect, left_axis),
+             get_ankle_angle(right_uncorrect, right_axis)]
 
     return angle
 
@@ -424,9 +419,10 @@ def pelvis_joint_center(frame):
     ...          'RPSI': np.array([ 341.42,  246.72, 1055.99]),
     ...          'LPSI': np.array([ 255.8,  241.42, 1057.3]) }
     >>> [np.around(arr, 2) for arr in pelvis_joint_center(frame)] #doctest: +NORMALIZE_WHITESPACE
-    [array([ 289.28,  425.45, 1034.95]), array([[ 289.26,  426.44, 1034.83],
-       [ 288.28,  425.42, 1034.93],
-       [ 289.26,  425.56, 1035.94]]), array([ 298.61,  244.07, 1056.64])]
+     [array([-2.0000e-02,  9.9000e-01, -1.2000e-01,  2.8928e+02]),
+      array([-1.0000e+00, -3.0000e-02, -2.0000e-02,  4.2545e+02]),
+      array([-2.00000e-02,  1.20000e-01,  9.90000e-01,  1.03495e+03]),
+      array([0., 0., 0., 1.])]
     """
     # Get the Pelvis Joint Centre
     RASI = frame['RASI']
@@ -472,14 +468,15 @@ def pelvis_joint_center(frame):
     # Z-axis is cross product of x_axis and y_axis.
     z_axis = np.cross(x_axis, y_axis)
 
-    # Add the origin back to the vector
-    y_axis = y_axis+origin
-    z_axis = z_axis+origin
-    x_axis = x_axis+origin
+    # Create the return matrix
+    pelvis = np.zeros((4, 4))
+    pelvis[3, 3] = 1.0
+    pelvis[0, :3] = x_axis
+    pelvis[1, :3] = y_axis
+    pelvis[2, :3] = z_axis
+    pelvis[:3, 3] = origin
 
-    pelvis_axis = np.asarray([x_axis, y_axis, z_axis])
-
-    return [origin, pelvis_axis, sacrum]
+    return pelvis
 
 
 def hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z,
@@ -528,8 +525,10 @@ def hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z,
     >>> pelvis_y = [250.62, 391.87, 1032.87]
     >>> pelvis_z = [251.60, 391.85, 1033.89]
     >>> np.around(hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z, vsk), 2)    #doctest: +NORMALIZE_WHITESPACE
-    array([[183.24, 338.8 , 934.65],
-           [308.9 , 322.3 , 937.19]])
+    array([[ 5.72900e+01, -6.94400e+01, -9.57000e+01,  2.51610e+02],
+           [-6.83700e+01, -5.29400e+01, -9.82400e+01,  3.91740e+02],
+           [ 0.00000e+00,  0.00000e+00,  0.00000e+00,  1.03289e+03],
+           [ 0.00000e+00,  0.00000e+00,  0.00000e+00,  1.00000e+00]])
     """
     # Get Global Values=
     # Set the variables needed to calculate the joint angle
@@ -546,7 +545,7 @@ def hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z,
                    np.subtract(pelvis_y, pelvis_origin),
                    np.subtract(pelvis_z, pelvis_origin)]
     distances = []
-    hip_joint_center = []
+    hip_joint_center = np.zeros((4, 4))
     for side in range(2):
         y_distance = C*np.sin(theta)-half_inter_asis_distance
         y_distance *= 1 if not side else -1
@@ -560,12 +559,14 @@ def hip_joint_center(frame, pelvis_origin, pelvis_x, pelvis_y, pelvis_z,
         # Multiply the distance to the unit pelvis axis
         pelvis_distances = [np.multiply(pelvis_axis[x], distances[side][x])
                             for x in range(3)]
-        hip_joint_center.append(np.add([pelvis_distances[0][x]
-                                        + pelvis_distances[1][x]
-                                        + pelvis_distances[2][x]
-                                for x in range(3)], pelvis_origin))
+        hip_joint_center[side, :3] = [pelvis_distances[0][x] +
+                                      pelvis_distances[1][x] +
+                                      pelvis_distances[2][x] for x in range(3)]
 
-    return hip_joint_center[::-1]
+    # Create the return matrix
+    hip_joint_center[3, 3] = 1.0
+    hip_joint_center[:3, 3] = pelvis_origin
+    return hip_joint_center
 
 
 def hip_axis_center(left_hip_joint_center, right_hip_joint_center,
@@ -610,22 +611,27 @@ def hip_axis_center(left_hip_joint_center, right_hip_joint_center,
     ...                    [251.60, 391.85, 1033.89]]),
     ...                np.array([231.58, 210.25, 1052.25])]
     >>> [np.around(arr,8) for arr in hip_axis_center(left_hip_joint_center, right_hip_joint_center, pelvis_axis)] #doctest: +NORMALIZE_WHITESPACE
-    [array([245.475, 331.115, 936.76 ]),
-    array([[245.605, 332.105, 936.66 ],
-           [244.485, 331.245, 936.74 ],
-           [245.465, 331.225, 937.76 ]])]
+    [array([ 1.30000e-01,  9.90000e-01, -1.00000e-01,  2.45475e+02]),
+     array([-9.90000e-01,  1.30000e-01, -2.00000e-02,  3.31115e+02]),
+     array([-1.0000e-02,  1.1000e-01,  1.0000e+00,  9.3676e+02]),
+     array([0., 0., 0., 1.])]
     """
-
     # Get shared hip axis, it is inbetween the two hip joint centers
-    hip_axis_center = np.mean([left_hip_joint_center, right_hip_joint_center],
+    shared_hip_axis = np.mean([left_hip_joint_center, right_hip_joint_center],
                               axis=0)
 
     # Translate pelvis axis to shared hip centre
     # Add the origin back to the vector
-    shared_hip_center = [np.add(np.subtract(pelvis_axis[1][x], pelvis_axis[0]),
-                                hip_axis_center) for x in range(3)]
+    shared_hip_center = [np.subtract(pelvis_axis[1][x], pelvis_axis[0])
+                               for x in range(3)]
 
-    return [hip_axis_center, shared_hip_center]
+    hip_axis_center = np.zeros((4, 4))
+    hip_axis_center[3, 3] = 1.0
+    hip_axis_center[0, :3] = shared_hip_center[0]
+    hip_axis_center[1, :3] = shared_hip_center[1]
+    hip_axis_center[2, :3] = shared_hip_center[2]
+    hip_axis_center[:3, 3] = shared_hip_axis
+    return hip_axis_center
 
 
 def knee_joint_center(frame, hip_joint_center, delta, vsk=None):
@@ -680,14 +686,14 @@ def knee_joint_center(frame, hip_joint_center, delta, vsk=None):
     ...         [309.38, 322.80, 937.99]]
     >>> delta = 0
     >>> [np.around(arr, 2) for arr in knee_joint_center(frame,hip_joint_center,delta,vsk)] #doctest: +NORMALIZE_WHITESPACE
-    [array([364.24, 292.34, 515.31]),
-     array([143.55, 279.9 , 524.79]),
-     array([[[364.69, 293.24, 515.31],
-             [363.36, 292.78, 515.17],
-             [364.12, 292.42, 516.3 ]],
-            [[143.65, 280.88, 524.63],
-             [142.56, 280.01, 524.86],
-             [143.64, 280.04, 525.77]]])]
+    [array([[ 1.0000e-01,  9.8000e-01, -1.5000e-01,  1.4355e+02],
+            [-9.9000e-01,  1.1000e-01,  8.0000e-02,  2.7990e+02],
+            [ 9.0000e-02,  1.4000e-01,  9.9000e-01,  5.2479e+02],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[ 4.4000e-01,  9.0000e-01, -1.0000e-02,  3.6424e+02],
+            [-8.9000e-01,  4.4000e-01, -1.5000e-01,  2.9234e+02],
+            [-1.3000e-01,  7.0000e-02,  9.9000e-01,  5.1531e+02],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
     # Get Global Values
     hip_joint_center = [hip_joint_center[1], hip_joint_center[0]]
@@ -733,9 +739,21 @@ def knee_joint_center(frame, hip_joint_center, delta, vsk=None):
             knee_axis.append(tmp_knee_axis)
 
         # Add the origin back to the vector
-        knee_axes.append(np.add(knee_axis, positions[side]))
+        knee_axes.append(knee_axis)
 
-    return [positions[0], positions[1], knee_axes]
+    knee_joint_center_left = np.zeros((4, 4))
+    knee_joint_center_right = np.zeros((4, 4))
+    knee_joint_center_left[3, 3] = 1.0
+    knee_joint_center_left[0, :3] = knee_axes[1][0]
+    knee_joint_center_left[1, :3] = knee_axes[1][1]
+    knee_joint_center_left[2, :3] = knee_axes[1][2]
+    knee_joint_center_left[:3, 3] = positions[1]
+    knee_joint_center_right[3, 3] = 1.0
+    knee_joint_center_right[0, :3] = knee_axes[0][0]
+    knee_joint_center_right[1, :3] = knee_axes[0][1]
+    knee_joint_center_right[2, :3] = knee_axes[0][2]
+    knee_joint_center_right[:3, 3] = positions[0]
+    return [knee_joint_center_left, knee_joint_center_right]
 
 
 def ankle_joint_center(frame, knee_joint_center, delta, vsk=None):
@@ -792,14 +810,14 @@ def ankle_joint_center(frame, knee_joint_center, delta, vsk=None):
     ...            [143.65, 280.05, 525.77]]])]
     >>> delta = 0
     >>> [np.around(arr, 2) for arr in ankle_joint_center(frame, knee_joint_center, delta, vsk)] #doctest: +NORMALIZE_WHITESPACE
-    [array([393.76, 247.68,  87.74]),
-     array([ 98.75, 219.47,  80.63]),
-     array([[[394.48, 248.37,  87.71],
-             [393.07, 248.39,  87.61],
-             [393.69, 247.78,  88.73]],
-            [[ 98.47, 220.43,  80.53],
-             [ 97.79, 219.21,  80.76],
-             [ 98.85, 219.6 ,  81.62]]])]
+    [array([[-2.7000e-01,  9.6000e-01, -1.0000e-01,  9.8750e+01],
+            [-9.6000e-01, -2.6000e-01,  1.3000e-01,  2.1947e+02],
+            [ 1.0000e-01,  1.3000e-01,  9.9000e-01,  8.0630e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[ 7.2000e-01,  6.9000e-01, -2.0000e-02,  3.9376e+02],
+            [-6.9000e-01,  7.1000e-01, -1.2000e-01,  2.4768e+02],
+            [-7.0000e-02,  1.0000e-01,  9.9000e-01,  8.7740e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
 
     # Get Global Values
@@ -856,10 +874,23 @@ def ankle_joint_center(frame, knee_joint_center, delta, vsk=None):
                         np.add(sine * ankle_axis[0], cosine * ankle_axis[1]),
                         ankle_axis[2]]
         # Add the origin back to the vector
-        rotated_axes.append(np.add(rotated_axis, positions[side]))
+        rotated_axes.append(rotated_axis)
 
     # Both of axis in array.
-    return [positions[0], positions[1], rotated_axes]
+
+    ankle_joint_center_left = np.zeros((4, 4))
+    ankle_joint_center_right = np.zeros((4, 4))
+    ankle_joint_center_left[3, 3] = 1.0
+    ankle_joint_center_left[0, :3] = rotated_axes[1][0]
+    ankle_joint_center_left[1, :3] = rotated_axes[1][1]
+    ankle_joint_center_left[2, :3] = rotated_axes[1][2]
+    ankle_joint_center_left[:3, 3] = positions[1]
+    ankle_joint_center_right[3, 3] = 1.0
+    ankle_joint_center_right[0, :3] = rotated_axes[0][0]
+    ankle_joint_center_right[1, :3] = rotated_axes[0][1]
+    ankle_joint_center_right[2, :3] = rotated_axes[0][2]
+    ankle_joint_center_right[:3, 3] = positions[0]
+    return [ankle_joint_center_left, ankle_joint_center_right]
 
 
 def foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center):
@@ -977,14 +1008,14 @@ def foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center):
     ...                         np.array([98.85, 219.60, 81.62])]]]
     >>> delta = 0
     >>> [np.around(arr,2) for arr in foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
-    [array([442.82, 381.62,  42.66]),
-     array([ 39.44, 382.45,  41.79]),
-     array([[[442.89, 381.76,  43.65],
-            [441.89, 382.  ,  42.67],
-            [442.45, 380.7 ,  42.82]],
-           [[ 39.51, 382.68,  42.76],
-            [ 38.5 , 382.15,  41.93],
-            [ 39.76, 381.53,  41.99]]])]
+    [array([[ 7.0000e-02,  2.3000e-01,  9.7000e-01,  3.9440e+01],
+            [-9.4000e-01, -3.0000e-01,  1.4000e-01,  3.8245e+02],
+            [ 3.2000e-01, -9.2000e-01,  2.0000e-01,  4.1790e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[ 7.0000e-02,  1.4000e-01,  9.9000e-01,  4.4282e+02],
+            [-9.3000e-01,  3.8000e-01,  1.0000e-02,  3.8162e+02],
+            [-3.7000e-01, -9.2000e-01,  1.6000e-01,  4.2660e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
     toes = [rtoe, ltoe]
 
@@ -1038,10 +1069,21 @@ def foot_joint_center(rtoe, ltoe, static_info, ankle_joint_center):
                          * rotated_axis[2][x]) for x in range(3)]]
 
         # Attach each axis to the origin
-        foot_axis.append([np.array(axis) + np.array(toes[side])
-                          for axis in rotated_axis])
+        foot_axis.append(rotated_axis)
 
-    return [rtoe, ltoe, foot_axis]
+    foot_joint_center_left = np.zeros((4, 4))
+    foot_joint_center_right = np.zeros((4, 4))
+    foot_joint_center_left[3, 3] = 1.0
+    foot_joint_center_left[0, :3] = foot_axis[1][0]
+    foot_joint_center_left[1, :3] = foot_axis[1][1]
+    foot_joint_center_left[2, :3] = foot_axis[1][2]
+    foot_joint_center_left[:3, 3] = ltoe
+    foot_joint_center_right[3, 3] = 1.0
+    foot_joint_center_right[0, :3] = foot_axis[0][0]
+    foot_joint_center_right[1, :3] = foot_axis[0][1]
+    foot_joint_center_right[2, :3] = foot_axis[0][2]
+    foot_joint_center_right[:3, 3] = rtoe
+    return [foot_joint_center_left, foot_joint_center_right]
 
 
 def head_joint_center(frame):
@@ -1074,9 +1116,10 @@ def head_joint_center(frame):
     ...          'RBHD': np.array([304.4, 242.91, 1694.97]),
     ...          'LBHD': np.array([197.86, 251.29, 1696.90])}
     >>> [np.around(arr, 2) for arr in head_joint_center(frame)] #doctest: +NORMALIZE_WHITESPACE
-    [array([[ 255.35,  405.15, 1721.76],
-            [ 256.1 ,  405.71, 1721.86],
-            [ 255.93,  406.79, 1722.03]]), array([ 255.19,  406.12, 1721.92])]
+    [array([ 1.6000e-01, -9.7000e-01, -1.6000e-01,  2.5519e+02]),
+     array([ 9.1000e-01, -4.1000e-01, -6.0000e-02,  4.0612e+02]),
+     array([7.40000e-01, 6.70000e-01, 1.10000e-01, 1.72192e+03]),
+     array([0., 0., 0., 1.])]
     """
 
     # Get the marker positions used for joint calculation
@@ -1120,11 +1163,14 @@ def head_joint_center(frame):
     if x_axis_norm:
         x_axis = np.divide(x_axis, x_axis_norm)
 
-    # Add the origin back to the vector to get it in the right position
-    head_axis = [np.add(axis, front) for axis in [x_axis, y_axis, z_axis]]
-
-    result = [head_axis, front]
-    return result
+    # Create the return matrix
+    head_joint_center = np.zeros((4, 4))
+    head_joint_center[3, 3] = 1.0
+    head_joint_center[0, :3] = x_axis
+    head_joint_center[1, :3] = y_axis
+    head_joint_center[2, :3] = z_axis
+    head_joint_center[:3, 3] = front
+    return head_joint_center
 
 
 def uncorrect_footaxis(frame, ankle_joint_center):
@@ -1190,14 +1236,14 @@ def uncorrect_footaxis(frame, ankle_joint_center):
     ...            np.array([97.79, 219.21, 80.76]),
     ...            np.array([98.85, 219.60, 81.62])]]]
     >>> [np.around(arr, 2) for arr in uncorrect_footaxis(frame,ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
-    [array([442.82, 381.62,  42.66]),
-    array([ 39.44, 382.45,  41.79]),
-    array([[[442.94, 381.9 ,  43.61],
-            [441.88, 381.97,  42.68],
-            [442.49, 380.72,  42.96]],
-           [[ 39.5 , 382.7 ,  42.76],
-            [ 38.5 , 382.14,  41.93],
-            [ 39.77, 381.53,  42.01]]])]
+    [array([[ 6.0000e-02,  2.5000e-01,  9.7000e-01,  3.9440e+01],
+            [-9.4000e-01, -3.1000e-01,  1.4000e-01,  3.8245e+02],
+            [ 3.3000e-01, -9.2000e-01,  2.2000e-01,  4.1790e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[ 1.2000e-01,  2.8000e-01,  9.5000e-01,  4.4282e+02],
+            [-9.4000e-01,  3.5000e-01,  2.0000e-02,  3.8162e+02],
+            [-3.3000e-01, -9.0000e-01,  3.0000e-01,  4.2660e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
     # Get global values
     toes = [frame['RTOE'], frame['LTOE']]
@@ -1228,10 +1274,21 @@ def uncorrect_footaxis(frame, ankle_joint_center):
         if y_axis_norm:
             y_axis = np.divide(y_axis, y_axis_norm)
 
-        foot_axes.append([np.add(axis, toes[side])
-                          for axis in [x_axis, y_axis, z_axis]])
+        foot_axes.append([x_axis, y_axis, z_axis])
 
-    return [toes[0], toes[1], foot_axes]
+    uncorrect_footaxis_left = np.zeros((4, 4))
+    uncorrect_footaxis_right = np.zeros((4, 4))
+    uncorrect_footaxis_left[3, 3] = 1.0
+    uncorrect_footaxis_left[0, :3] = foot_axes[1][0]
+    uncorrect_footaxis_left[1, :3] = foot_axes[1][1]
+    uncorrect_footaxis_left[2, :3] = foot_axes[1][2]
+    uncorrect_footaxis_left[:3, 3] = toes[1]
+    uncorrect_footaxis_right[3, 3] = 1.0
+    uncorrect_footaxis_right[0, :3] = foot_axes[0][0]
+    uncorrect_footaxis_right[1, :3] = foot_axes[0][1]
+    uncorrect_footaxis_right[2, :3] = foot_axes[0][2]
+    uncorrect_footaxis_right[:3, 3] = toes[0]
+    return [uncorrect_footaxis_left, uncorrect_footaxis_right]
 
 
 def rotaxis_flat_foot(frame, ankle_joint_center, vsk=None):
@@ -1307,14 +1364,14 @@ def rotaxis_flat_foot(frame, ankle_joint_center, vsk=None):
     ...                          np.array([98.85, 219.60, 81.62])]]]
     >>> vsk = { 'RightSoleDelta': 0.45, 'LeftSoleDelta': 0.45}
     >>> [np.around(arr, 2) for arr in rotaxis_flat_foot(frame, ankle_joint_center, vsk)] #doctest: +NORMALIZE_WHITESPACE
-    [array([442.82, 381.62,  42.66]),
-     array([ 39.44, 382.45,  41.79]),
-     array([[[442.33, 381.82,  43.51],
-             [442.01, 381.88,  42.13],
-             [442.49, 380.67,  42.69]],
-            [[ 39.14, 382.38,  42.74],
-             [ 38.54, 382.15,  41.48],
-             [ 39.75, 381.5 ,  41.82]]])]
+    [array([[-3.0000e-01, -7.0000e-02,  9.5000e-01,  3.9440e+01],
+            [-9.0000e-01, -3.0000e-01, -3.1000e-01,  3.8245e+02],
+            [ 3.1000e-01, -9.5000e-01,  3.0000e-02,  4.1790e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[-4.9000e-01,  2.0000e-01,  8.5000e-01,  4.4282e+02],
+            [-8.1000e-01,  2.6000e-01, -5.3000e-01,  3.8162e+02],
+            [-3.3000e-01, -9.5000e-01,  3.0000e-02,  4.2660e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
     # Get Global Values
     toes = [frame['RTOE'], frame['LTOE']]
@@ -1356,10 +1413,21 @@ def rotaxis_flat_foot(frame, ankle_joint_center, vsk=None):
         if z_axis_norm:
             z_axis = np.divide(z_axis, z_axis_norm)
 
-        foot_axes.append([np.add(axis, toes[side])
-                          for axis in [x_axis, y_axis, z_axis]])
+        foot_axes.append([x_axis, y_axis, z_axis])
 
-    return [toes[0], toes[1], foot_axes]
+    rotaxis_left = np.zeros((4, 4))
+    rotaxis_right = np.zeros((4, 4))
+    rotaxis_left[3, 3] = 1.0
+    rotaxis_left[0, :3] = foot_axes[1][0]
+    rotaxis_left[1, :3] = foot_axes[1][1]
+    rotaxis_left[2, :3] = foot_axes[1][2]
+    rotaxis_left[:3, 3] = toes[1]
+    rotaxis_right[3, 3] = 1.0
+    rotaxis_right[0, :3] = foot_axes[0][0]
+    rotaxis_right[1, :3] = foot_axes[0][1]
+    rotaxis_right[2, :3] = foot_axes[0][2]
+    rotaxis_right[:3, 3] = toes[0]
+    return [rotaxis_left, rotaxis_right]
 
 
 def rotaxis_non_flat_foot(frame, ankle_joint_center):
@@ -1426,14 +1494,14 @@ def rotaxis_non_flat_foot(frame, ankle_joint_center):
     ...            np.array([97.79, 219.21, 80.76]),
     ...            np.array([98.85, 219.60, 81.62])]]]
     >>> [np.around(arr, 2) for arr in rotaxis_non_flat_foot(frame, ankle_joint_center)] #doctest: +NORMALIZE_WHITESPACE
-    [array([442.82, 381.62,  42.66]),
-     array([ 39.44, 382.45,  41.79]),
-     array([[[442.72, 381.69,  43.65],
-             [441.88, 381.94,  42.54],
-             [442.49, 380.67,  42.69]],
-            [[ 39.56, 382.51,  42.78],
-             [ 38.5 , 382.15,  41.92],
-             [ 39.75, 381.5 ,  41.82]]])]
+    [array([[ 1.2000e-01,  6.0000e-02,  9.9000e-01,  3.9440e+01],
+            [-9.4000e-01, -3.0000e-01,  1.3000e-01,  3.8245e+02],
+            [ 3.1000e-01, -9.5000e-01,  3.0000e-02,  4.1790e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]),
+     array([[-1.0000e-01,  7.0000e-02,  9.9000e-01,  4.4282e+02],
+            [-9.4000e-01,  3.2000e-01, -1.2000e-01,  3.8162e+02],
+            [-3.3000e-01, -9.5000e-01,  3.0000e-02,  4.2660e+01],
+            [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]])]
     """
     # Get global values
     toes = [frame['RTOE'], frame['LTOE']]
@@ -1468,10 +1536,21 @@ def rotaxis_non_flat_foot(frame, ankle_joint_center):
 
         z_axis = heel_to_toe
 
-        foot_axes.append([np.add(axis, toes[side])
-                          for axis in [x_axis, y_axis, z_axis]])
+        foot_axes.append([x_axis, y_axis, z_axis])
 
-    return [toes[0], toes[1], foot_axes]
+    rotaxis_left = np.zeros((4, 4))
+    rotaxis_right = np.zeros((4, 4))
+    rotaxis_left[3, 3] = 1.0
+    rotaxis_left[0, :3] = foot_axes[1][0]
+    rotaxis_left[1, :3] = foot_axes[1][1]
+    rotaxis_left[2, :3] = foot_axes[1][2]
+    rotaxis_left[:3, 3] = toes[1]
+    rotaxis_right[3, 3] = 1.0
+    rotaxis_right[0, :3] = foot_axes[0][0]
+    rotaxis_right[1, :3] = foot_axes[0][1]
+    rotaxis_right[2, :3] = foot_axes[0][2]
+    rotaxis_right[:3, 3] = toes[0]
+    return [rotaxis_left, rotaxis_right]
 
 
 def get_ankle_angle(proximal_axis, distal_axis):
@@ -1511,15 +1590,20 @@ def get_ankle_angle(proximal_axis, distal_axis):
     --------
     >>> import numpy as np
     >>> from .static import get_ankle_angle
-    >>> proximal_axis = [[ 0.59, 0.11, 0.16],
-    ...                  [-0.13, -0.10, -0.90],
-    ...                  [0.94, -0.05, 0.75]]
-    >>> distal_axis = [[0.17, 0.69, -0.37],
-    ...                [0.14, -0.39, 0.94],
-    ...                [-0.16, -0.53, -0.60]]
+    >>> proximal_axis = np.array([[ 0.59, 0.11, 0.16, 0.0],
+    ...                           [-0.13, -0.10, -0.90, 0.0],
+    ...                           [0.94, -0.05, 0.75, 0.0],
+    ...                           [0.0, 0.0, 0.0, 1.0]])
+    >>> distal_axis = np.array([[0.17, 0.69, -0.37, 0.0],
+    ...                         [0.14, -0.39, 0.94, 0.0],
+    ...                         [-0.16, -0.53, -0.60, 0.0],
+    ...                         [0.0, 0.0, 0.0, 1.0]])
     >>> np.around(get_ankle_angle(proximal_axis, distal_axis), 2)
     array([0.48, 1.  , 1.56])
     """
+    proximal_axis = [proximal_axis[0, :3], proximal_axis[1, :3],
+                     proximal_axis[2, :3]]
+    distal_axis = [distal_axis[0, :3], distal_axis[1, :3], distal_axis[2, :3]]
     # make inverse matrix of proximal_axis
     inverse_proximal_axis = np.linalg.pinv(proximal_axis)
 
