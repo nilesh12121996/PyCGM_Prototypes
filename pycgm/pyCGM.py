@@ -83,6 +83,8 @@ class pyCGM():
                                     'foot_axis': ['RFoot', 'LFoot'],
                                     'head_axis': ['Head'],
                                     'thorax_axis': ['Thorax'],
+                                    'wand_marker': ['RWand', 'LWand'],
+                                    'clav_joint_center': ['RClavJC', 'LClavJC'],
                                     'clav_axis': ['RClav', 'LClav'],
                                     'hum_axis': ['RHum', 'LHum', 'RWristJC', 'LWristJC'],
                                     'rad_axis': ['RRad', 'LRad'],
@@ -159,12 +161,24 @@ class pyCGM():
 
             [
                 # foot_axis
-                # no function?
+                self.Marker(self.marker_slice('RTOE')),
+                self.Marker(self.marker_slice('LTOE')),
+                self.Axis(self.axis_index('RAnkle')),
+                self.Axis(self.axis_index('LAnkle')),
+                self.Measurement(self.measurement_value('RightStaticRotOff')),
+                self.Measurement(self.measurement_value('LeftStaticRotOff')),
+                self.Measurement(self.measurement_value(
+                    'RightStaticPlantFlex')),
+                self.Measurement(self.measurement_value(
+                    'LeftStaticPlantFlex')),
             ],
 
             [
                 # head_axis
-                # no function?
+                self.Marker(self.marker_slice('LFHD')),
+                self.Marker(self.marker_slice('RFHD')),
+                self.Marker(self.marker_slice('LBHD')),
+                self.Marker(self.marker_slice('RBHD')),
             ],
 
             [
@@ -176,8 +190,32 @@ class pyCGM():
             ],
 
             [
+                # wand_marker
+                self.Marker(self.marker_slice('RSHO')),
+                self.Marker(self.marker_slice('LSHO')),
+                self.Axis(self.axis_index('Thorax')),
+            ],
+
+            [
+                # clav_joint_center/shoulder_joint_center
+                self.Marker(self.marker_slice('RSHO')),
+                self.Marker(self.marker_slice('LSHO')),
+                self.Axis(self.axis_index('Thorax')),
+                self.Axis(self.axis_index('RWand')),
+                self.Axis(self.axis_index('LWand')),
+                self.Measurement(self.measurement_value(
+                    'RightShoulderOffset')),
+                self.Measurement(self.measurement_value('LeftShoulderOffset')),
+            ],
+
+
+            [
                 # clav_axis/shoulder_axis
-                # no function?
+                self.Axis(self.axis_index('Thorax')),
+                self.Axis(self.axis_index('RClavJC')),
+                self.Axis(self.axis_index('LClavJC')),
+                self.Axis(self.axis_index('RWand')),
+                self.Axis(self.axis_index('LWand')),
             ],
 
             [
@@ -461,7 +499,7 @@ class pyCGM():
         # list of default axis result names
 
         return ['Pelvis', 'RHipJC', 'LHipJC', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
-                'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RWristJC', 'LWristJC', 'RRad', 'LRad', 'RHand', 'LHand']
+                'Thorax', 'RWand', 'LWand', 'RClavJC', 'LClavJC', 'RClav', 'LClav', 'RHum', 'LHum', 'RWristJC', 'LWristJC', 'RRad', 'LRad', 'RHand', 'LHand']
 
     def check_robo_results_accuracy(self, axis_results):
         # test structured axes against existing csv output file
@@ -480,39 +518,45 @@ class pyCGM():
         axis_array_fields = ['Pelvis', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
                              'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
 
-        slice_map = {key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields)}
+        slice_map = {key: slice(index*12, index*12+12, 1)
+                     for index, key in enumerate(axis_array_fields)}
 
         missing_axes = ['RClav', 'LClav', 'RFoot', 'LFoot', 'Head']
         accurate = True
 
-        actual_results = np.genfromtxt( 'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
+        actual_results = np.genfromtxt(
+            'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
         for frame_idx, frame in enumerate(actual_results):
             frame = frame[58:]
             for key, slc in slice_map.items():
                 if any(missing_axis in key for missing_axis in missing_axes):
                     continue
-                else:
-                    original_o = frame[slc.start:slc.start + 3]
-                    original_x = frame[slc.start + 3:slc.start + 6]
-                    original_y = frame[slc.start + 6:slc.start + 9]
-                    original_z = frame[slc.start + 9:slc.stop]
-                    refactored_o = axis_results[frame_idx][key][:3, 3]
-                    refactored_x = axis_results[frame_idx][key][0, :3] + refactored_o
-                    refactored_y = axis_results[frame_idx][key][1, :3] + refactored_o
-                    refactored_z = axis_results[frame_idx][key][2, :3] + refactored_o
-                    if not np.allclose(original_o, refactored_o):
-                        accurate = False
-                        print(f'{frame_idx}: {key}, origin')
-                    if not np.allclose(original_x, refactored_x):
-                        accurate = False
-                        print(f'{frame_idx}: {key}, x-axis')
-                    if not np.allclose(original_y, refactored_y):
-                        accurate = False
-                        print(f'{frame_idx}: {key}, y-axis')
-                    if not np.allclose(original_z, refactored_z):
-                        accurate = False
-                        print(f'{frame_idx}: {key}, z-axis')
-        print('All results, not including missing axes, in line with roboresults?', accurate)
+
+                original_o = frame[slc.start:slc.start + 3]
+                original_x = frame[slc.start + 3:slc.start + 6]
+                original_y = frame[slc.start + 6:slc.start + 9]
+                original_z = frame[slc.start + 9:slc.stop]
+                refactored_o = axis_results[frame_idx][key][:3, 3]
+                refactored_x = axis_results[frame_idx][key][0,
+                                                            :3] + refactored_o
+                refactored_y = axis_results[frame_idx][key][1,
+                                                            :3] + refactored_o
+                refactored_z = axis_results[frame_idx][key][2,
+                                                            :3] + refactored_o
+                if not np.allclose(original_o, refactored_o, rtol=1.e-3, atol=1e-2):
+                    accurate = False
+                    print(f'{frame_idx}: {key}, origin')
+                if not np.allclose(original_x, refactored_x, rtol=1.e-3, atol=1.e-2):
+                    accurate = False
+                    print(f'{frame_idx}: {key}, x-axis')
+                if not np.allclose(original_y, refactored_y, rtol=1.e-3, atol=1.e-2):
+                    accurate = False
+                    print(f'{frame_idx}: {key}, y-axis')
+                if not np.allclose(original_z, refactored_z, rtol=1.e-3, atol=1.e-2):
+                    accurate = False
+                    print(f'{frame_idx}: {key}, z-axis')
+        print(
+            'All results, not including missing axes, in line with roboresults?', accurate)
 
     def structure_trial_axes(self, axis_results):
         # takes a flat array of floats that represent the 4x4 axes at each frame
@@ -614,7 +658,6 @@ class pyCGM():
         # run axis functions in sequence
         for index, func in enumerate(self.axis_funcs):
             axis_params = []
-
 
             for i, param in enumerate(self.axis_func_parameters[index]):
                 if isinstance(param, self.Marker):  # marker data slice
