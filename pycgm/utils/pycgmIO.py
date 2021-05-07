@@ -48,9 +48,19 @@ def loadData(filename, rawData=True):
     RoboResults.c3d in SampleData are used to
     test the output.
 
+    >>> csvFile = 'SampleData/ROM/Sample_Static.csv'
     >>> c3dFile = 'SampleData/Sample_2/RoboStatic.c3d'
+    >>> csvData = loadData(csvFile)
+    SampleData/ROM/Sample_Static.csv
     >>> c3dData = loadData(c3dFile)
     SampleData/Sample_2/RoboStatic.c3d
+
+    Testing for some values from the loaded csv file.
+
+    >>> csvData[0]['RHNO'] #doctest: +NORMALIZE_WHITESPACE
+    array([ 811.9591064,  677.3413696, 1055.390991 ])
+    >>> csvData[0]['C7'] #doctest: +NORMALIZE_WHITESPACE
+    array([ 250.765976,  165.616333, 1528.094116])
 
     Testing for some values from the loaded c3d file.
 
@@ -61,36 +71,40 @@ def loadData(filename, rawData=True):
     """
     print(filename)
 
-    reader = c3d.Reader(open(filename, 'rb'))
-    labels = reader.get('POINT:LABELS').string_array
-    data = []
-    dataunlabeled = []
+    if str(filename).endswith('.c3d'):
+        reader = c3d.Reader(open(filename, 'rb'))
+        labels = reader.get('POINT:LABELS').string_array
+        data = []
+        dataunlabeled = []
 
-    markers = [str(label.rstrip()) for label in labels]
+        markers = [str(label.rstrip()) for label in labels]
 
-    for frame_no, points, analog in reader.read_frames(True, True):
-        data_dict = {}
-        data_unlabeled = {}
-        for label, point in zip(markers, points):
-            # Create a dictionary with format LFHDX: 123
-            if label[0] == '*':
-                if point[0] != np.nan:
-                    data_unlabeled[label] = point
-            else:
-                data_dict[label] = point
+        for frame_no, points, analog in reader.read_frames(True, True):
+            data_dict = {}
+            data_unlabeled = {}
+            for label, point in zip(markers, points):
+                # Create a dictionary with format LFHDX: 123
+                if label[0] == '*':
+                    if point[0] != np.nan:
+                        data_unlabeled[label] = point
+                else:
+                    data_dict[label] = point
 
-        data.append(data_dict)
-        dataunlabeled.append(data_unlabeled)
+            data.append(data_dict)
+            dataunlabeled.append(data_unlabeled)
 
-    # add any missing keys
-    keys = ['RASI', 'LASI', 'RPSI', 'LPSI', 'RTHI', 'LTHI', 'RKNE', 'LKNE', 'RTIB',
-            'LTIB', 'RANK', 'LANK', 'RTOE', 'LTOE', 'LFHD', 'RFHD', 'LBHD', 'RBHD',
-            'RHEE', 'LHEE', 'CLAV', 'C7', 'STRN', 'T10', 'RSHO', 'LSHO', 'RELB', 'LELB',
-            'RWRA', 'RWRB', 'LWRA', 'LWRB', 'RFIN', 'LFIN']
-    for frame in data:
-        for key in keys:
-            frame.setdefault(key, [np.nan, np.nan, np.nan])
-    return data
+        # add any missing keys
+        keys = ['RASI', 'LASI', 'RPSI', 'LPSI', 'RTHI', 'LTHI', 'RKNE', 'LKNE', 'RTIB',
+                'LTIB', 'RANK', 'LANK', 'RTOE', 'LTOE', 'LFHD', 'RFHD', 'LBHD', 'RBHD',
+                'RHEE', 'LHEE', 'CLAV', 'C7', 'STRN', 'T10', 'RSHO', 'LSHO', 'RELB', 'LELB',
+                'RWRA', 'RWRB', 'LWRA', 'LWRB', 'RFIN', 'LFIN']
+        for frame in data:
+            for key in keys:
+                frame.setdefault(key, [np.nan, np.nan, np.nan])
+        return data
+
+    elif str(filename).endswith('.csv'):
+        return loadCSV(filename)[0]
 
 
 def loadVSK(filename, dict=True):
@@ -165,6 +179,239 @@ def loadVSK(filename, dict=True):
         return vsk
 
     return [vsk_keys, vsk_data]
+
+
+def loadCSV(filename):
+    """Open and load a CSV file of motion capture data.
+    Keys in the returned data dictionaries are marker names, and
+    the corresponding values are a numpy array with the associated
+    value. ``data[marker] = array([x, y, z])``
+    Parameters
+    ----------
+    filename : str
+        File name of the CSV file to be loaded.
+    Returns
+    -------
+    [motionData, unlabeledMotionData, labels] : array
+        `motionData` is a list of dict. Each dict represents one frame in
+        the trial. `unlabeledMotionData` contains a list of dictionaries
+        of the same form as in `motionData`, but for unlabeled points.
+        `labels` is a list of marker names.
+    Examples
+    --------
+    Sample_Static.csv in SampleData is used to test the output.
+    >>> filename = 'SampleData/ROM/Sample_Static.csv'
+    >>> result = loadCSV(filename)
+    >>> motionData = result[0]
+    >>> unlabeledMotionData = result[1]
+    >>> labels = result[2]
+
+    Testing for some values from data.
+    
+    >>> motionData[0]['RHNO'] #doctest: +NORMALIZE_WHITESPACE
+    array([ 811.9591064,  677.3413696, 1055.390991 ])
+    >>> motionData[0]['C7'] #doctest: +NORMALIZE_WHITESPACE
+    array([ 250.765976,  165.616333, 1528.094116])
+    >>> unlabeledMotionData[0] #doctest: +NORMALIZE_WHITESPACE
+    {'*111': array([ 692.8970947, 423.9462585, 1240.289063 ]),
+     '*112': array([-225.5265198, 405.5791321, 1214.458618 ]),
+     '*113': array([ -82.65164185, 232.3781891 , 1361.853638 ]),
+     '*114': array([ 568.5736694, 260.4929504, 1361.799805 ])}
+    >>> labels
+    ['LFHD', 'RFHD', 'LBHD', ...]
+    """
+    if filename == '':
+        self.returnedData.emit(None)
+    import numpy as np
+    from numpy.compat import asbytes #probably not needed
+
+    fh = open(filename,'r')
+
+    fh=iter(fh)
+    delimiter=','
+
+    def rowToDict(row, labels):
+        """Convert a row and labels to a dictionary.
+        This function is only in scope from within `loadCSV`.
+        Parameters
+        ----------
+        row : array
+            List of x, y, and z coordinate values.
+        labels : array
+            List of marker names.
+        Returns
+        -------
+        dic, unlabeleddic : tuple
+            `dic` is a dictionary where keys are marker names and values
+            are the corresponding marker value. `unlabeleddic` holds
+            all unlabeled marker values in the same format as `dic`.
+        Examples
+        --------
+        This example uses a loop and numpy.array_equal to test the equality
+        of individual dictionary elements since python does not guarantee
+        the order of dictionary elements.
+        >>> from numpy import array, array_equal
+        >>> row = ['-1003.58', '81.01', '1522.24',
+        ...        '-1022.27', '-47.19', '1519.68',
+        ...        '-833.95', '40.89', '1550.33']
+        >>> labels = ['LFHD', 'RFHD', 'LBHD']
+        >>> dict, unlabeleddict = rowToDict(row, labels)
+        >>> expectedDict = {'LFHD': array([-1003.58, 81.01, 1522.24]),
+        ...                 'RFHD': array([-1022.27, -47.19, 1519.68]),
+        ...                 'LBHD': array([-833.95, 40.89, 1550.33])}
+        >>> unlabeleddict # No unlabeled values are expected for this example
+        {}
+        >>> flag = True # False if any values are not equal
+        >>> for marker in dict:
+        ...     if (not array_equal(dict[marker], expectedDict[marker])):
+        ...         flag = False
+        >>> flag
+        True
+        """
+        dic={}
+        unlabeleddic={}
+        if pyver == 2: row=zip(row[0::3],row[1::3],row[2::3])
+        if pyver == 3: row=list(zip(row[0::3],row[1::3],row[2::3]))
+        empty=np.asarray([np.nan,np.nan,np.nan],dtype=np.float64)
+        for coordinates,label in zip(row,labels):
+            #unlabeled data goes to a different dictionary
+            if label[0]=="*":
+                try:
+                    unlabeleddic[label]=np.float64(coordinates)
+                except:
+                    pass
+            else:
+                try:
+                    dic[label]=np.float64(coordinates)
+                except:
+                    #Missing data from labeled marker is NaN
+                    dic[label]=empty.copy()
+        return dic,unlabeleddic
+
+    def split_line(line):
+        """Split a line in a csv file into an array
+        This function is only in scope from within `loadCSV`.
+        Parameters
+        ----------
+        line : str
+            String form of the line to be split
+        Returns
+        -------
+        array
+            Array form of `line`, split on the predefined delimiter ','.
+        Examples
+        --------
+        >>> line = '-772.18, -312.35, 589.82'
+        >>> split_line(line)
+        ['-772.18', ' -312.35', ' 589.82']
+        """
+        if pyver == 2: line = asbytes(line).strip(asbytes('\r\n'))
+        elif pyver == 3: line = line.strip('\r\n')
+        if line:
+            return line.split(delimiter)
+        else:
+            return []
+
+    def parseTrajectories(fh, framesNumber):
+        r"""Converts rows of motion capture data into a dictionary
+        This function is only in scope from within `loadCSV`.
+        Parameters
+        ----------
+        fh : list iterator object
+            Iterator for rows of motion capture data. The first 3 rows
+            in `fh` contain the frequency, labels, and field headers
+            respectively. All elements of the rows in `fh` are strings.
+            See Examples.
+        framesNumber : int
+            Number of rows iterated over in `fh`.
+        Returns
+        -------
+        labels, rows, rowsUnlabeled, freq : tuple
+            `labels` is a list of marker names.
+            `rows` is a list of dict of motion capture data.
+            Indices of `rows` correspond to frames in the trial. 
+            `rowsUnlabeled` is of the same type as `rows`, but for
+            unlabeled data.
+            `freq` is the frequency in Hz.
+        Examples
+        --------
+        This example uses a loop and numpy.array_equal to test the equality
+        of individual dictionary elements since python does not guarantee
+        the order of dictionary elements.
+        Example for 2 markers, LFHD and RFHD, and one frame of trial.
+        >>> from numpy import array, array_equal
+        # Rows will hold frequency, headers, fields, and one row of data
+        >>> rows = [None, None, None, None]
+        >>> rows[0] = '240.00,Hz\n'
+        >>> rows[1] = ',LFHD,,,RFHD\n'
+        >>> rows[2] = 'Field #,X,Y,Z,X,Y,Z\n'
+        >>> rows[3] = '1, -1003.58, 81.01, 1522.24, -1022.27, -47.19, 1519.68\n'
+        >>> fh = iter(rows)
+        >>> framesNumber = 1 # Indicates one row of data
+        >>> labels, rows, rowsUnlabeled, freq = parseTrajectories(fh, framesNumber)
+        >>> labels
+        ['LFHD', 'RFHD']
+        >>> expectedRows = [{'LFHD': array([-1003.58, 81.01, 1522.24]),
+        ...                  'RFHD': array([-1022.27, -47.19, 1519.68])}]
+        >>> flag = True # False if any values are not equal
+        >>> for i in range(len(expectedRows)):
+        ...     for key in rows[i]:
+        ...         if (not array_equal(rows[i][key], expectedRows[i][key])):
+        ...             flag = False
+        >>> flag
+        True
+        >>> rowsUnlabeled
+        [{}]
+        >>> freq
+        240.0
+        """
+        delimiter=','
+        if pyver == 2:
+            freq=np.float64(split_line(fh.next())[0])
+            labels=split_line(fh.next())[1::3]
+            fields=split_line(fh.next())
+        elif pyver == 3:
+            freq=np.float64(split_line(next(fh))[0])
+            labels=split_line(next(fh))[1::3]
+            fields=split_line(next(fh))
+        delimiter = asbytes(delimiter)
+        rows=[]
+        rowsUnlabeled=[]
+        if pyver == 2: first_line=fh.next()
+        elif pyver == 3: first_line=next(fh)
+        first_elements=split_line(first_line)[1:]
+        colunsNum=len(first_elements)
+        first_elements,first_elements_unlabeled=rowToDict(first_elements,labels)
+        rows.append(first_elements)
+        rowsUnlabeled.append(first_elements_unlabeled)
+
+        for row in fh:
+            row=split_line(row)[1:]
+            if len(row)!=colunsNum:
+                break
+            elements,unlabeled_elements=rowToDict(row,labels)
+            rows.append(elements)
+            rowsUnlabeled.append(unlabeled_elements)
+        return labels,rows,rowsUnlabeled,freq
+
+    ###############################################
+    ### Find the trajectories
+    framesNumber=0
+    for i in fh:
+        if i.startswith("Time"):
+            #First elements with freq,labels,fields
+            if pyver == 2: rows=[fh.next(),fh.next(),fh.next()]
+            if pyver == 3: rows=[next(fh),next(fh),next(fh)]
+            for j in fh:
+                if j.startswith("\r\n"):
+                    break
+                framesNumber=framesNumber+1
+                rows.append(j)
+            break
+    rows=iter(rows)
+    labels,motionData,unlabeledMotionData,freq=parseTrajectories(rows,framesNumber)
+
+    return [motionData,unlabeledMotionData,labels]
 
 
 def writeKinetics(CoM_output, kinetics):
