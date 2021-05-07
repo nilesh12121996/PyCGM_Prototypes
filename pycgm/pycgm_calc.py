@@ -181,7 +181,6 @@ class CalcAxes():
         axis[0, :3] = pelvis_x_axis
         axis[1, :3] = pelvis_y_axis
         axis[2, :3] = pelvis_z_axis
-        axis[:3, 3] = hipaxis_center[:3, 3]
 
         return np.matmul(hipaxis_center, axis)
 

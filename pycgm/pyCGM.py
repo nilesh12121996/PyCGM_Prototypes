@@ -464,34 +464,62 @@ class pyCGM():
                 'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RWristJC', 'LWristJC', 'RRad', 'LRad', 'RHand', 'LHand']
 
     def check_robo_results_accuracy(self, axis_results):
-        # test unstructured pelvis axes against existing csv output file
+        # test structured axes against existing csv output file
         # this will be removed later
 
-        actual_results = np.genfromtxt(
-            'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
-        pelvis_OXYZ = [row[58:70] for row in actual_results]
+        csv_fields = ["PELO", "PELX", "PELY", "PELZ", "HIPO", "HIPX", "HIPY", "HIPZ",
+                      "R KNEO", "R KNEX", "R KNEY", "R KNEZ", "L KNEO", "L KNEX", "L KNEY", "L KNEZ",
+                      "R ANKO", "R ANKX", "R ANKY", "R ANKZ", "L ANKO", "L ANKX", "L ANKY", "L ANKZ",
+                      "R FOOO", "R FOOX", "R FOOY", "R FOOZ", "L FOOO", "L FOOX", "L FOOY", "L FOOZ",
+                      "HEAO", "HEAX", "HEAY", "HEAZ", "THOO", "THOX", "THOY", "THOZ", "R CLAO", "R CLAX",
+                      "R CLAY", "R CLAZ", "L CLAO", "L CLAX", "L CLAY", "L CLAZ", "R HUMO", "R HUMX",
+                      "R HUMY", "R HUMZ", "L HUMO", "L HUMX", "L HUMY", "L HUMZ", "R RADO", "R RADX",
+                      "R RADY", "R RADZ", "L RADO", "L RADX", "L RADY", "L RADZ", "R HANO", "R HANX",
+                      "R HANY", "R HANZ", "L HANO", "L HANX", "L HANY", "L HANZ"]
+
+        axis_array_fields = ['Pelvis', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
+                             'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
+
+        slice_map = {key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields)}
+
+        missing_axes = ['RClav', 'LClav', 'RFoot', 'LFoot', 'Head']
         accurate = True
-        for i, frame in enumerate(pelvis_OXYZ):
-            origin = axis_results[i][0][:3, 3]
-            if not np.allclose(frame[:3], axis_results[i][0][:3, 3]):
-                accurate = False
-            if not np.allclose(frame[3:6], axis_results[i][0][0, :3] + origin):
-                accurate = False
-            if not np.allclose(frame[6:9], axis_results[i][0][1, :3] + origin):
-                accurate = False
-            if not np.allclose(frame[9:12], axis_results[i][0][2, :3] + origin):
-                accurate = False
-        print('All pelvis results in line with RoboResults_pycgm.csv: ', accurate)
+
+        actual_results = np.genfromtxt( 'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
+        for frame_idx, frame in enumerate(actual_results):
+            frame = frame[58:]
+            for key, slc in slice_map.items():
+                if any(missing_axis in key for missing_axis in missing_axes):
+                    continue
+                else:
+                    original_o = frame[slc.start:slc.start + 3]
+                    original_x = frame[slc.start + 3:slc.start + 6]
+                    original_y = frame[slc.start + 6:slc.start + 9]
+                    original_z = frame[slc.start + 9:slc.stop]
+                    refactored_o = axis_results[frame_idx][key][:3, 3]
+                    refactored_x = axis_results[frame_idx][key][0, :3] + refactored_o
+                    refactored_y = axis_results[frame_idx][key][1, :3] + refactored_o
+                    refactored_z = axis_results[frame_idx][key][2, :3] + refactored_o
+                    if not np.allclose(original_o, refactored_o):
+                        accurate = False
+                        print(f'{frame_idx}: {key}, origin')
+                    if not np.allclose(original_x, refactored_x):
+                        accurate = False
+                        print(f'{frame_idx}: {key}, x-axis')
+                    if not np.allclose(original_y, refactored_y):
+                        accurate = False
+                        print(f'{frame_idx}: {key}, y-axis')
+                    if not np.allclose(original_z, refactored_z):
+                        accurate = False
+                        print(f'{frame_idx}: {key}, z-axis')
+        print('All results, not including missing axes, in line with roboresults?', accurate)
 
     def structure_trial_axes(self, axis_results):
         # takes a flat array of floats that represent the 4x4 axes at each frame
         # returns a structured array, indexed by result[optional frame slice or index][axis name]
 
-        # uncomment to test against robo results pelvis
-        # self.check_robo_results_accuracy(axis_results.reshape(self.axis_results_shape))
-
         axis_result_keys = list(chain(*self.axis_result_mapping.values()))
-        axis_row_dtype = np.dtype([(key, 'f4', (4, 4))
+        axis_row_dtype = np.dtype([(key, 'f8', (4, 4))
                                   for key in axis_result_keys])
 
         return np.array([tuple(frame) for frame in axis_results.reshape(self.axis_results_shape)], dtype=axis_row_dtype)
@@ -501,7 +529,7 @@ class pyCGM():
         # returns a structured array, indexed by result[optional frame slice or index][angle name]
 
         angle_result_keys = list(chain(*self.angle_result_mapping.values()))
-        angle_row_dtype = np.dtype([(key, 'f4', (3,))
+        angle_row_dtype = np.dtype([(key, 'f8', (3,))
                                    for key in angle_result_keys])
 
         return np.array([tuple(frame) for frame in angle_results.reshape(self.angle_results_shape)], dtype=angle_row_dtype)
@@ -512,8 +540,8 @@ class pyCGM():
         flat_rows = self.marker_data
 
         # create a shared array to store axis and angle results
-        shared_axes = mp.RawArray('f', self.num_frames * self.num_axes * 16)
-        shared_angles = mp.RawArray('f', self.num_frames * self.num_angles * 3)
+        shared_axes = mp.RawArray('d', self.num_frames * self.num_axes * 16)
+        shared_angles = mp.RawArray('d', self.num_frames * self.num_angles * 3)
         nprocs = cores if cores is not None else os.cpu_count() - 1
         marker_data_blocks = np.array_split(flat_rows, nprocs)
 
@@ -540,18 +568,18 @@ class pyCGM():
 
         # structure flat axis and angle results
         self.axes = self.structure_trial_axes(
-            np.frombuffer(shared_axes, dtype=np.float32))
+            np.frombuffer(shared_axes, dtype=np.float64))
         self.angles = self.structure_trial_angles(
-            np.frombuffer(shared_angles, dtype=np.float32))
+            np.frombuffer(shared_angles, dtype=np.float64))
 
     def run(self, frames=None, index_offset=None, index_end=None, axis_results_size=None, angle_results_size=None, shared_axes=None, shared_angles=None):
 
-        flat_axis_results = np.array([], dtype=np.float32)
-        flat_angle_results = np.array([], dtype=np.float32)
+        flat_axis_results = np.array([], dtype=np.float64)
+        flat_angle_results = np.array([], dtype=np.float64)
 
         if shared_angles is not None:  # multiprocessing, write to shared memory
-            shared_axes = np.frombuffer(shared_axes, dtype=np.float32)
-            shared_angles = np.frombuffer(shared_angles, dtype=np.float32)
+            shared_axes = np.frombuffer(shared_axes, dtype=np.float64)
+            shared_angles = np.frombuffer(shared_angles, dtype=np.float64)
 
             for frame in frames:
                 flat_axis_results = np.append(
