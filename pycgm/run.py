@@ -2,6 +2,7 @@ from utils import pycgmIO
 from custom_CGMs import harrington_hip_CGM, oxfordCGM, eyeballCGM
 from pyCGM import pyCGM
 from SM import SubjectManager
+from test_robowalk import check_robo_results_accuracy
 
 measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
 marker_data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
@@ -13,7 +14,7 @@ def default_cgm_example():
 
     subject = pyCGM(measurements, static_trial, marker_data)
     subject.multi_run()
-    subject.check_robo_results_accuracy(subject.axes)
+    check_robo_results_accuracy(subject.axes)
     subject_pelvis = subject.axes['Pelvis'] # subject's pelvis axis at each frame
     subject_pelvis_axis_frame_400 = subject.axes[400]['Pelvis'] # subject's pelvis axis at frame 400
     subject_pelvis_angle_frame_400 = subject.angles[400]['Pelvis'] # subject's pelvis angle at frame 400

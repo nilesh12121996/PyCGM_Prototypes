@@ -627,3 +627,83 @@ def writeResult(data, filename, **kargs):
     end = 3600
     np.savetxt(filename+'.csv', dataFilter,
                delimiter=delimiter, header=header, fmt="%.15f")
+
+def data_as_dict(data, npArray=False):
+    """Converts frame-by-frame motion capture data to a dictionary.
+
+    Parameters
+    ----------
+    data : array
+    ¦   List of dict. Indices of `data` correspond to frames
+    ¦   in the trial. Keys in the dictionary are marker names and
+    ¦   values are x, y, and z coordinates of the corresponding marker.
+    npArray : bool, optional
+    ¦   False by default. If set to true, the function will return
+    ¦   a numpy array for each key instead of a list.
+
+    Returns
+    -------
+    dataDict : dict
+    ¦   Dictionary of the motion capture data from `data`. Keys are marker
+    ¦   names and values are lists of x, y, and z coordinate arrays.
+    ¦   Indices of each value correspond to frames in the trial.
+
+    Examples
+    --------
+    This example uses a loop and ``numpy.array_equal`` to test the equality
+    of individual dictionary elements since python does not guarantee
+    the order of dictionary elements.
+
+    >>> from numpy import array, array_equal
+    >>> data = [{'RFHD': array([325.83, 402.55, 1722.50]),
+    ...          'LFHD': array([184.55, 409.69, 1721.34]),
+    ...          'LBHD': array([197.86, 251.29, 1696.90])},
+    ...         {'RFHD': array([326.83, 403.55, 1723.50]),
+    ...          'LFHD': array([185.55, 408.69, 1722.34]),
+    ...          'LBHD': array([198.86, 252.29, 1697.90])}]
+    >>> result = dataAsDict(data, True) # Return as numpy array
+    >>> expected = {'RFHD': array([[ 325.83, 402.55, 1722.50],
+    ...                            [ 326.83, 403.55, 1723.50]]),
+    ...             'LFHD': array([[ 184.55, 409.69, 1721.34],
+    ...                            [ 185.55, 408.69, 1722.34]]),
+    ...             'LBHD': array([[ 197.86, 251.29, 1696.90],
+    ...                            [ 198.86, 252.29, 1697.90]])}
+    >>> flag = True # False if any values are not equal
+    >>> for marker in result:
+    ...     if (not array_equal(result[marker], expected[marker])):
+    ...         flag = False
+    >>> flag
+    True
+    """
+    dataDict = {}
+
+    for frame in data:
+        for key in frame:
+            dataDict.setdefault(key,[])
+            dataDict[key].append(frame[key])
+                                                                
+    if npArray == True:
+        for key in dataDict:
+            dataDict[key] = np.array(dataDict[key])
+
+    return dataDict
+
+def dicts_to_flat_arrays(dynamic_trial_dict):
+    """
+
+    converts list of marker data dicts:
+        [
+            {'LFHD': [x,y,z], 'RFHD': [x,y,z]} # frame 0
+            {'LFHD': [x,y,z], 'RFHD': [x,y,z]} # frame 1
+            ...
+        ]
+    
+    to a numpy array of flat marker data arrays:
+        [
+            [x,y,z,x,y,z] # frame 0
+            [x,y,z,x,y,z] # frame 1
+            ...
+        ]
+
+    """
+    return np.array([np.asarray(list(frame.values())).flatten() for frame in dynamic_trial_dict])
