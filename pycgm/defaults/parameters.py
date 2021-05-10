@@ -71,12 +71,20 @@ class AxisFunctions():
 
             [
                 # foot_axis parameters
-                # no function?
+                Marker('RTOE'), Marker('LTOE'),
+                Axis('RAnkle'), Axis('LAnkle'),
+                Measurement('RightStaticRotOff'),
+                Measurement('LeftStaticRotOff'),
+                Measurement('RightStaticPlantFlex'),
+                Measurement('LeftStaticPlantFlex'),
             ],
 
             [
                 # head_axis parameters
-                # no function?
+                Marker('LFHD'),
+                Marker('RFHD'),
+                Marker('LBHD'),
+                Marker('RBHD')
             ],
 
             [
@@ -87,7 +95,11 @@ class AxisFunctions():
 
             [
                 # clav_axis/shoulder_axis parameters
-                # no function?
+                Marker('RSHO'), Marker('LSHO'),
+                Axis('Thorax'), Axis('RWand'),
+                Axis('LWand'),
+                Measurement('RightShoulderOffset'),
+                Measurement('LeftShoulderOffset')
             ],
 
             [
