@@ -2,22 +2,22 @@ import numpy as np
 
 def check_robo_results_accuracy(axis_results):
     # test structured axes against existing csv output file
-    # this will be removed later
 
     csv_fields = ["PELO", "PELX", "PELY", "PELZ", "HIPO", "HIPX", "HIPY", "HIPZ",
-                    "R KNEO", "R KNEX", "R KNEY", "R KNEZ", "L KNEO", "L KNEX", "L KNEY", "L KNEZ",
-                    "R ANKO", "R ANKX", "R ANKY", "R ANKZ", "L ANKO", "L ANKX", "L ANKY", "L ANKZ",
-                    "R FOOO", "R FOOX", "R FOOY", "R FOOZ", "L FOOO", "L FOOX", "L FOOY", "L FOOZ",
-                    "HEAO", "HEAX", "HEAY", "HEAZ", "THOO", "THOX", "THOY", "THOZ", "R CLAO", "R CLAX",
-                    "R CLAY", "R CLAZ", "L CLAO", "L CLAX", "L CLAY", "L CLAZ", "R HUMO", "R HUMX",
-                    "R HUMY", "R HUMZ", "L HUMO", "L HUMX", "L HUMY", "L HUMZ", "R RADO", "R RADX",
-                    "R RADY", "R RADZ", "L RADO", "L RADX", "L RADY", "L RADZ", "R HANO", "R HANX",
-                    "R HANY", "R HANZ", "L HANO", "L HANX", "L HANY", "L HANZ"]
+                  "R KNEO", "R KNEX", "R KNEY", "R KNEZ", "L KNEO", "L KNEX", "L KNEY", "L KNEZ",
+                  "R ANKO", "R ANKX", "R ANKY", "R ANKZ", "L ANKO", "L ANKX", "L ANKY", "L ANKZ",
+                  "R FOOO", "R FOOX", "R FOOY", "R FOOZ", "L FOOO", "L FOOX", "L FOOY", "L FOOZ",
+                  "HEAO", "HEAX", "HEAY", "HEAZ", "THOO", "THOX", "THOY", "THOZ", "R CLAO", "R CLAX",
+                  "R CLAY", "R CLAZ", "L CLAO", "L CLAX", "L CLAY", "L CLAZ", "R HUMO", "R HUMX",
+                  "R HUMY", "R HUMZ", "L HUMO", "L HUMX", "L HUMY", "L HUMZ", "R RADO", "R RADX",
+                  "R RADY", "R RADZ", "L RADO", "L RADX", "L RADY", "L RADZ", "R HANO", "R HANX",
+                  "R HANY", "R HANZ", "L HANO", "L HANX", "L HANY", "L HANZ"]
 
     axis_array_fields = ['Pelvis', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
-                            'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
+                         'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
 
-    slice_map = {key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields)}
+    # 'Pelvis' in the structured array corresponds to 'PELO', 'PELX', 'PELY', 'PELZ' in the csv (12 values)
+    slice_map = { key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields) }
 
     missing_axes = ['RClav', 'LClav', 'RFoot', 'LFoot', 'Head']
     accurate = True
@@ -25,11 +25,12 @@ def check_robo_results_accuracy(axis_results):
     actual_results = np.genfromtxt( 'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
     for frame_idx, frame in enumerate(actual_results):
         frame = frame[58:]
+
         for key, slc in slice_map.items():
             if any(missing_axis in key for missing_axis in missing_axes):
                 continue
             else:
-                original_o = frame[slc.start:slc.start + 3]
+                original_o = frame[slc.start    :slc.start + 3]
                 original_x = frame[slc.start + 3:slc.start + 6]
                 original_y = frame[slc.start + 6:slc.start + 9]
                 original_z = frame[slc.start + 9:slc.stop]
