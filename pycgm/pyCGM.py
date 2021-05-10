@@ -1,10 +1,7 @@
-import numpy as np
-from itertools import chain
 import os
 import multiprocessing as mp
-import sys
-import functools
-import csv
+from itertools import chain
+import numpy as np
 from static import getStatic
 from pycgm_calc import CalcAxes, CalcAngles
 from utils import pycgmIO
