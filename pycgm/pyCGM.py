@@ -9,34 +9,19 @@ from static import getStatic
 from pycgm_calc import CalcAxes, CalcAngles
 from utils import pycgmIO
 from pipelines import rigid_fill, filtering, prep, clearMarker
+from defaults.parameters import Measurement, Marker, Axis, Angle, AxisFunctions, AngleFunctions
 
 class pyCGM():
-
-    class Measurement():
-        # a measurement value
-        def __init__(self, value):
-            self.value = value
-
-    class Marker():
-        # a marker slice
-        def __init__(self, slice):
-            self.slice = slice
-
-    class Axis():
-        # an axis index
-        def __init__(self, index):
-            self.index = index
-
-    class Angle():
-        # an angle index
-        def __init__(self, index):
-            self.index = index
-
     def __init__(self, measurements, static_trial, dynamic_trial):
 
         # get calibrated subject measurements
         measurements_as_dict = dict(zip(measurements[0], measurements[1]))
         self.measurements    = getStatic(static_trial, measurements_as_dict)
+
+        # map the list of measurement names to indices
+        self.measurement_keys          = list(self.measurements.keys())
+        self.measurement_values        = list(self.measurements.values())
+        self.measurement_name_to_index = {measurement_key: index for index, measurement_key in enumerate(self.measurement_keys)}
 
         # fill, filter, and prep marker data
         static_trial_dict  = pycgmIO.data_as_dict(static_trial, npArray=True)
@@ -51,21 +36,6 @@ class pyCGM():
         # map the list of marker names to slices
         self.marker_keys          = dynamic_trial[0].keys()
         self.marker_name_to_slice = {marker_key: slice(index*3, index*3+3, 1) for index, marker_key in enumerate(self.marker_keys)}
-
-        # some struct helper attributes
-        self.num_frames                 = len(self.marker_data)
-        self.num_axes                   = len(self.default_axis_keys)
-        self.num_angles                 = len(self.default_angle_keys)
-        self.num_axis_floats_per_frame  = self.num_axes * 16
-        self.num_angle_floats_per_frame = self.num_angles * 3
-        self.axis_results_shape         = (self.num_frames, self.num_axes, 4, 4)
-        self.angle_results_shape        = (self.num_frames, self.num_angles, 3)
-
-        # map axes and angles so functions can use results of the current frame
-        self.axis_keys             = self.default_axis_keys
-        self.angle_keys            = self.default_angle_keys
-        self.axis_name_to_index    = { axis: index for index, axis in enumerate(self.axis_keys) }
-        self.angle_name_to_index   = { angle: index for index, angle in enumerate(self.angle_keys) }
 
         # add non-overridden default pycgm_calc funcs to funcs list
         self.axis_functions  = [func if not hasattr(self, func.__name__) else getattr(self, func.__name__) for func in CalcAxes().funcs]
@@ -103,254 +73,178 @@ class pyCGM():
                                          'elbow_angle': ['RElbow', 'LElbow'],
                                          'wrist_angle': ['RWrist', 'LWrist']}
 
-        # default required slices of axis functions
-        self.axis_func_parameters = [
-            [
-                # pelvis_axis parameters
-                self.Marker(self.marker_slice('RASI')), self.Marker(self.marker_slice('LASI')),
-                self.Marker(self.marker_slice('RPSI')), self.Marker(self.marker_slice('LPSI')),
-                self.Marker(self.marker_slice('SACR'))
-            ],
+        # map returned axis and angle indices so functions can use results of the current frame
+        self.axis_keys             = list(chain(*self.axis_function_to_return.values())) # flat list of all returned axes
+        self.angle_keys            = list(chain(*self.angle_function_to_return.values())) # flat list of all returned angles
+        self.axis_name_to_index    = { axis: index for index, axis in enumerate(self.axis_keys) }
+        self.angle_name_to_index   = { angle: index for index, angle in enumerate(self.angle_keys) }
 
-            [
-                # hip_joint_center parameters
-                self.Axis(self.axis_index('Pelvis')), self.Measurement(self.measurement_value('MeanLegLength')),
-                self.Measurement(self.measurement_value('R_AsisToTrocanterMeasure')),
-                self.Measurement(self.measurement_value('L_AsisToTrocanterMeasure')),
-                self.Measurement(self.measurement_value('InterAsisDistance')),
-            ],
+        # structured array helper attributes
+        self.num_frames                 = len(self.marker_data)
+        self.num_axes                   = len(self.axis_keys)
+        self.num_angles                 = len(self.angle_keys)
+        self.num_axis_floats_per_frame  = self.num_axes * 16
+        self.num_angle_floats_per_frame = self.num_angles * 3
+        self.axis_results_shape         = (self.num_frames, self.num_axes, 4, 4)
+        self.angle_results_shape        = (self.num_frames, self.num_angles, 3)
 
-            [
-                # hip_axis parameters
-                self.Axis(self.axis_index('RHipJC')),
-                self.Axis(self.axis_index('LHipJC')),
-                self.Axis(self.axis_index('Pelvis')),
-            ],
+        # get default parameter keys
+        axis_func_parameter_names  = AxisFunctions().parameters()
+        angle_func_parameter_names = AngleFunctions().parameters()
 
-            [
-                # knee_axis parameters
-                self.Marker(self.marker_slice('RTHI')), self.Marker(self.marker_slice('LTHI')),
-                self.Marker(self.marker_slice('RKNE')), self.Marker(self.marker_slice('LKNE')),
-                self.Axis(self.axis_index('RHipJC')),
-                self.Axis(self.axis_index('LHipJC')),
-                self.Measurement(self.measurement_value('RightKneeWidth')),
-                self.Measurement(self.measurement_value('LeftKneeWidth')),
-            ],
+        # set parameters of this trial
+        self.axis_func_parameters  = self.names_to_values(axis_func_parameter_names)
+        self.angle_func_parameters = self.names_to_values(angle_func_parameter_names)
 
+    def names_to_values(self, function_list):
+        """
+        convert list of function parameter names:
             [
-                # ankle_axis parameters
-                self.Marker(self.marker_slice('RTIB')), self.Marker(self.marker_slice('LTIB')),
-                self.Marker(self.marker_slice('RANK')), self.Marker(self.marker_slice('LANK')),
-                self.Axis(self.axis_index('RKnee')),    self.Axis(self.axis_index('LKnee')),
-                self.Measurement(self.measurement_value('RightAnkleWidth')),
-                self.Measurement(self.measurement_value('LeftAnkleWidth')),
-                self.Measurement(self.measurement_value('RightTibialTorsion')),
-                self.Measurement(self.measurement_value('LeftTibialTorsion')),
-            ],
+                [
+                    # knee_axis parameters
 
-            [
-                # foot_axis parameters
-                # no function?
-            ],
-
-            [
-                # head_axis parameters
-                # no function?
-            ],
-
-            [
-                # thorax_axis parameters
-                self.Marker(self.marker_slice('CLAV')), self.Marker(self.marker_slice('C7')),
-                self.Marker(self.marker_slice('STRN')), self.Marker(self.marker_slice('T10')),
-            ],
-
-            [
-                # clav_axis/shoulder_axis parameters
-                # no function?
-            ],
-
-            [
-                # hum_axis/elbow_joint_center parameters
-                self.Marker(self.marker_slice('RELB')), self.Marker(self.marker_slice('LELB')),
-                self.Marker(self.marker_slice('RWRA')), self.Marker(self.marker_slice('RWRB')),
-                self.Marker(self.marker_slice('LWRA')), self.Marker(self.marker_slice('LWRB')),
-                self.Axis(self.axis_index('RClav')),    self.Axis(self.axis_index('LClav')),
-                self.Measurement(self.measurement_value('RightElbowWidth')),
-                self.Measurement(self.measurement_value('LeftElbowWidth')),
-                self.Measurement(self.measurement_value('RightWristWidth')),
-                self.Measurement(self.measurement_value('LeftWristWidth')),
-                7.0,  # marker mm
-            ],
-
-            [
-                # rad_axis/wrist_axis parameters
-                self.Axis(self.axis_index('RHum')),     self.Axis(self.axis_index('LHum')),
-                self.Axis(self.axis_index('RWristJC')), self.Axis(self.axis_index('LWristJC')),
-            ],
-
-            [
-                # hand_axis parameters
-                self.Marker(self.marker_slice('RWRA')), self.Marker(self.marker_slice('RWRB')),
-                self.Marker(self.marker_slice('LWRA')), self.Marker(self.marker_slice('LWRB')),
-                self.Marker(self.marker_slice('RFIN')), self.Marker(self.marker_slice('LFIN')),
-                self.Axis(self.axis_index('RWristJC')), self.Axis(self.axis_index('LWristJC')),
-                self.Measurement(self.measurement_value('RightHandThickness')),
-                self.Measurement(self.measurement_value('LeftHandThickness'))
-            ],
-        ]
-
-        self.angle_func_parameters = [
-
-            [
-                # pelvis_angle parameters
-                self.Measurement(self.measurement_value('GCS')),
-                self.Axis(self.axis_index('Pelvis'))
-            ],
-
-            [
-                # hip_angle parameters
-                self.Axis(self.axis_index('Hip')), self.Axis(self.axis_index('RKnee')),
-                self.Axis(self.axis_index('Hip')), self.Axis(self.axis_index('LKnee'))
-            ],
-
-            [
-                # knee_angle parameters
-                self.Axis(self.axis_index('RKnee')), self.Axis(self.axis_index('RAnkle')),
-                self.Axis(self.axis_index('LKnee')), self.Axis(self.axis_index('LAnkle'))
-            ],
-
-            [
-                # ankle_angle parameters
-                self.Axis(self.axis_index('RAnkle')), self.Axis(self.axis_index('RFoot')),
-                self.Axis(self.axis_index('LAnkle')), self.Axis(self.axis_index('LFoot'))
-            ],
-
-            [
-                # foot_angle parameters
-                self.Measurement(self.measurement_value('GCS')), self.Axis(self.axis_index('RFoot')),
-                self.Measurement(self.measurement_value('GCS')), self.Axis(self.axis_index('LFoot'))
-            ],
-
-            [
-                # head_angle parameters
-                self.Measurement(self.measurement_value('GCS')),
-                self.Axis(self.axis_index('Head'))
-            ],
-
-            [
-                # thorax_angle parameters
-                self.Measurement(self.measurement_value('GCS')),
-                self.Axis(self.axis_index('Thorax'))
-            ],
-
-            [
-                # neck_angle parameters
-                self.Axis(self.axis_index('Head')),
-                self.Axis(self.axis_index('Thorax'))
-            ],
-
-            [
-                # spine_angle parameters
-                self.Axis(self.axis_index('Pelvis')),
-                self.Axis(self.axis_index('Thorax'))
-            ],
-
-            [
-                # shoulder_angle parameters
-                self.Axis(self.axis_index('Thorax')), self.Axis(self.axis_index('RHum')),
-                self.Axis(self.axis_index('Thorax')), self.Axis(self.axis_index('LHum'))
-            ],
-
-            [
-                # elbow_angle parameters
-                self.Axis(self.axis_index('RHum')), self.Axis(self.axis_index('RRad')),
-                self.Axis(self.axis_index('LHum')), self.Axis(self.axis_index('LRad'))
-            ],
-
-            [
-                # wrist_angle parameters
-                self.Axis(self.axis_index('RRad')), self.Axis(self.axis_index('RHand')),
-                self.Axis(self.axis_index('LRad')), self.Axis(self.axis_index('LHand'))
+                    Marker('RTHI'),
+                    Marker('LTHI'),
+                    Marker('RKNE'),
+                    Marker('LKNE'),
+                    Axis('RHipJC'),
+                    Axis('LHipJC'),
+                    Measurement('RightKneeWidth'),
+                    Measurement('LeftKneeWidth')
+                ],
+                ...
             ]
-        ]
 
-    def marker_slice(self, marker_name):
-        # retrieve the slice that corresponds to the given marker name
+        to a list of function parameters with their proper indices:
+            [
+                [
+                    # knee_axis parameters
 
-        return self.marker_name_to_slice[marker_name] if marker_name in self.marker_name_to_slice.keys() else None
+                    [1, slice(0, 3)],
+                    [1, slice(3, 6)],
+                    [1, slice(6, 9)], 
+                    [1, slice(9, 12)],
+                    [2, 0],
+                    [2, 1],
+                    [0, 20],
+                    [0, 21]
+                ]
+                ...
+            ]
 
-    def measurement_value(self, measurement_name):
-        # retrieve the value of the given measurement name
 
-        return self.measurements[measurement_name] if measurement_name in self.measurements.keys() else None
+        the new parameters are indexed as:
+            [dataset, index]
 
-    def axis_index(self, axis_name):
-        # retrieve the axis results index of the given axis name
+        and the datasets being indexed are:
+            [measurements, markers, axes, angles]
 
-        return self.axis_name_to_index[axis_name] if axis_name in self.axis_name_to_index.keys() else None
+        e.g. 
+            Marker('RTHI')       = [1, slice(0, 3)]
+            data[1][slice(0, 3)] = the first 3 values in marker data
 
-    def angle_index(self, angle_name):
-        # retrieve the angle results index of the given angle name
+        """
+        updated_parameters_list = [[] for i in range(len(function_list))]
 
-        return self.angle_name_to_index[angle_name] if angle_name in self.angle_name_to_index.keys() else None
+        for function_index, function_parameters in enumerate(function_list):
+            for parameter in function_parameters:
+
+                if isinstance(parameter, Marker):
+                    # use marker name to find slice
+                    parameter_index = self.marker_name_to_slice[parameter.name] if parameter.name in self.marker_name_to_slice.keys() else None
+
+                    # add marker slice
+                    updated_parameters_list[function_index].append([parameter.dataset_index, parameter_index])
+
+                elif isinstance(parameter, Measurement):
+                    # use measurement name to find index
+                    parameter_index = self.measurement_name_to_index[parameter.name] if parameter.name in self.measurements.keys() else None
+
+                    # add measurement index
+                    updated_parameters_list[function_index].append([parameter.dataset_index, parameter_index])
+
+                elif isinstance(parameter, Axis):
+                    # use axis name to find index
+                    parameter_index = self.axis_name_to_index[parameter.name] if parameter.name in self.axis_name_to_index.keys() else None
+
+                    # add axis index
+                    updated_parameters_list[function_index].append([parameter.dataset_index, parameter_index])
+
+                elif isinstance(parameter, Angle):
+                    # use angle name to find index
+                    parameter_index = self.angle_name_to_index[parameter.name] if parameter.name in self.angle_name_to_index.keys() else None
+
+                    # add angle index
+                    updated_parameters_list[function_index].append([parameter.dataset_index, parameter_index])
+                else:
+                    # parameter is a constant
+                    updated_parameters_list[function_index].append(parameter)
+
+        return updated_parameters_list
+
 
     def modify_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
         # modify an existing function's parameters and returned values
         # used for overriding an existing function's parameters or returned results
 
         if returns_axes is not None and returns_angles is not None:
-            sys.exit(
-                '{} must return either an axis or an angle, not both'.format(function))
+            raise Exception('{} must return either an axis or an angle, not both'.format(function))
 
         # get the value or location of parameters
         params = []
-        for marker_name in [marker_name for marker_name in (markers or [])]:
-            # add all marker slices
-            params.append(self.Marker(self.marker_slice(marker_name)))
-
         for measurement_name in [measurement_name for measurement_name in (measurements or [])]:
             # add all measurement values
-            params.append(self.Measurement(self.measurement_value(measurement_name)))
+            params.append([0, self.measurement_name_to_index[measurement_name]])
+
+        for marker_name in [marker_name for marker_name in (markers or [])]:
+            # add all marker slices
+            params.append([1, self.marker_name_to_slice[marker_name]])
 
         for axis_name in [axis_name for axis_name in (axes or [])]:
             # all all axis indices
-            params.append(self.Axis(self.axis_index(axis_name)))
+            params.append([2, self.axis_name_to_index[axis_name]])
 
         for angle_name in [angle_name for angle_name in (angles or [])]:
             # all all angle indices
-            params.append(self.Angle(self.angle_index(angle_name)))
+            params.append([3, self.angle_name_to_index[angle_name]])
 
         if isinstance(function, str):  # make sure a function name is passed
             if function in self.axis_function_to_index:
-                # set parameters of axis function
+                # set parameters of modified axis function
                 self.axis_functions[self.axis_function_to_index[function]] = getattr(self, function)
                 self.axis_func_parameters[self.axis_function_to_index[function]] = params
 
             elif function in self.angle_function_to_index:
-                # set parameters of angle function
+                # set parameters of modified angle function
                 self.angle_functions[self.angle_function_to_index[function]] = getattr(self, function)
                 self.angle_func_parameters[self.angle_function_to_index[function]] = params
 
             else:
-                sys.exit('Function {} not found'.format(function))
+                raise Exception(('Function {} not found'.format(function)))
         else:
-            sys.exit('Pass the name of the function as a string like so: \'{}\''.format(function.__name__))
+            raise Exception('Pass the name of the function as a string like so: \'{}\''.format(function.__name__))
 
-        # add returned axes, update
         if returns_axes is not None:
+        # add returned axes, update related attributes
+
             self.axis_function_to_return[function]   = returns_axes
-            self.num_axes                            = len(list(chain(*self.axis_function_to_return.values())))
+
+            self.num_axes                            = len(list(chain(*self.axis_function_to_return.values()))) # len(all of the returned axes)
             self.axis_name_to_index                  = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
             self.num_axis_floats_per_frame           = self.num_axes * 16
+
             self.axis_results_shape                  = (self.num_frames, self.num_axes, 4, 4)
 
-        # add returned angles, update
         if returns_angles is not None:
+        # add returned angles, update related attributes
+
             self.angle_function_to_return[function]   = returns_angles
-            self.num_angles                           = len(list(chain(*self.angle_function_to_return.values())))
-            self.angle_name_to_index                  = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
+
+            self.num_angles                           = len(list(chain(*self.angle_function_to_return.values()))) # len(all of the returned angles)
             self.num_angle_floats_per_frame           = self.num_angles * 3
             self.angle_results_shape                  = (self.num_frames, self.num_angles, 3)
+
+            self.angle_name_to_index                  = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
 
     def add_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
         # add a custom function to pycgm
@@ -358,35 +252,37 @@ class pyCGM():
         # get func object and name
         if isinstance(function, str):
             func_name = function
-            func = getattr(self, func_name)
+            func      = getattr(self, func_name)
         elif callable(function):
             func_name = function.__name__
-            func = function
+            func      = function
 
         if returns_axes is not None and returns_angles is not None:
-            sys.exit('{} must return either an axis or an angle, not both'.format(func_name))
+            raise Exception('{} must return either an axis or an angle, not both'.format(func_name))
         if returns_axes is None and returns_angles is None:
-            sys.exit('{} must return a custom axis or angle. if the axis or angle already exists by default, just use self.modify_function()'.format(func_name))
+            raise Exception('{} must return a custom axis or angle. if the axis or angle already exists by default, just use self.modify_function()'.format(func_name))
 
         # get the value or location of parameters
         params = []
-        for marker_name in [marker_name for marker_name in (markers or [])]:
-            # add all marker slices
-            params.append(self.Marker(self.marker_slice(marker_name)))
-
         for measurement_name in [measurement_name for measurement_name in (measurements or [])]:
             # add all measurement values
-            params.append(self.Measurement(self.measurement_value(measurement_name)))
+            params.append([0, self.measurement_name_to_index[measurement_name]])
+
+        for marker_name in [marker_name for marker_name in (markers or [])]:
+            # add all marker slices
+            params.append([1, self.marker_name_to_slice[marker_name]])
 
         for axis_name in [axis_name for axis_name in (axes or [])]:
             # all all axis indices
-            params.append(self.Axis(self.axis_name_to_index(axis_name)))
+            params.append([2, self.axis_name_to_index[axis_name]])
 
         for angle_name in [angle_name for angle_name in (angles or [])]:
             # all all angle indices
-            params.append(self.Angle(self.angle_name_to_index(angle_name)))
+            params.append([3, self.angle_name_to_index[angle_name]])
 
-        if returns_axes is not None:  # extend axes and update
+        if returns_axes is not None:
+            # add returned axes, update related attributes
+
             self.axis_functions.append(func)
             self.axis_func_parameters.append([])
             self.axis_keys.extend(returns_axes)
@@ -403,6 +299,8 @@ class pyCGM():
             self.axis_func_parameters[self.axis_function_to_index[func_name]] = params
 
         if returns_angles is not None:  # extend angles and update
+            # add returned angles, update related attributes
+
             self.angle_functions.append(func)
             self.angle_func_parameters.append([])
             self.angle_keys.extend(returns_angles)
@@ -418,26 +316,9 @@ class pyCGM():
             # set parameters of new function
             self.angle_func_parameters[self.angle_function_to_index[func_name]] = params
 
-    @property
-    def default_angle_keys(self):
-        # list of default angle result names
-
-        return ['Pelvis', 'RHip', 'LHip', 'RKnee', 'LKnee', 'RAnkle',
-                'LAnkle', 'RFoot', 'LFoot',
-                'Head', 'Thorax', 'Neck', 'Spine', 'RShoulder', 'LShoulder',
-                'RElbow', 'LElbow', 'RWrist', 'LWrist']
-
-    @property
-    def default_axis_keys(self):
-        # list of default axis result names
-
-        return ['Pelvis', 'RHipJC', 'LHipJC', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
-                'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RWristJC', 'LWristJC', 'RRad', 'LRad', 'RHand', 'LHand']
-
-
     def structure_trial_axes(self, axis_results):
         # takes a flat array of floats that represent the 4x4 axes at each frame
-        # returns a structured array, indexed by result[optional frame slice or index][axis name]
+        # returns a structured array, indexed by axes[optional frame slice or index][axis name]
 
         axis_result_keys = list(chain(*self.axis_function_to_return.values()))
         axis_row_dtype = np.dtype([(key, 'f8', (4, 4)) for key in axis_result_keys])
@@ -446,7 +327,7 @@ class pyCGM():
 
     def structure_trial_angles(self, angle_results):
         # takes a flat array of floats that represent the 3x1 angles at each frame
-        # returns a structured array, indexed by result[optional frame slice or index][angle name]
+        # returns a structured array, indexed by angles[optional frame slice or index][angle name]
 
         angle_result_keys = list(chain(*self.angle_function_to_return.values()))
         angle_row_dtype   = np.dtype([(key, 'f8', (3,)) for key in angle_result_keys])
@@ -517,20 +398,22 @@ class pyCGM():
         axis_results = []
         angle_results = []
 
+        data = [self.measurement_values, frame, axis_results, angle_results]
+
         # run axis functions in sequence
         for index, func in enumerate(self.axis_functions):
             axis_params = []
 
+            for param in self.axis_func_parameters[index]:
+                # param[0]: which dataset the parameter belongs to
+                    # measurement = 0, marker = 1, axis = 2, angle = 3
+                # param[1]: the index or slice of the parameter in its respective dataset
 
-            for i, param in enumerate(self.axis_func_parameters[index]):
-                if isinstance(param, self.Marker):  # marker data slice
-                    axis_params.append(frame[param.slice])
-                elif isinstance(param, self.Measurement):  # measurement value
-                    axis_params.append(param.value)
-                elif isinstance(param, self.Axis):  # axis mapping index
-                    axis_params.append(axis_results[param.index])
-                else:
+                try:
+                    axis_params.append(data[param[0]][param[1]])
+                except TypeError: # param is a constant e.g. 7.0
                     axis_params.append(param)
+
 
             ret_axes = np.asarray(func(*axis_params))
 
@@ -545,13 +428,13 @@ class pyCGM():
             angle_params = []
 
             for param in self.angle_func_parameters[index]:
-                if isinstance(param, self.Marker):  # marker data slice
-                    angle_params.append(frame[param.slice])
-                elif isinstance(param, self.Measurement):  # measurement value
-                    angle_params.append(param.value)
-                elif isinstance(param, self.Axis):  # axis mapping index
-                    angle_params.append(axis_results[param.index])
-                else:
+                # param[0]: which dataset the parameter belongs to
+                    # measurement = 0, marker = 1, axis = 2, angle = 3
+                # param[1]: the index or slice of the parameter in its respective dataset
+
+                try:
+                    angle_params.append(data[param[0]][param[1]])
+                except TypeError: # param is a constant e.g. 7.0
                     angle_params.append(param)
 
             ret_angles = np.asarray(func(*angle_params))
