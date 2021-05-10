@@ -51,6 +51,8 @@ class pyCGM():
                                         'foot_axis': ['RFoot', 'LFoot'],
                                         'head_axis': ['Head'],
                                         'thorax_axis': ['Thorax'],
+                                        'wand_marker': ['RWand', 'LWand'],
+                                        'clav_joint_center': ['RClavJC', 'LClavJC'],
                                         'clav_axis': ['RClav', 'LClav'],
                                         'hum_axis': ['RHum', 'LHum', 'RWristJC', 'LWristJC'],
                                         'rad_axis': ['RRad', 'LRad'],

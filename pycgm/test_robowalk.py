@@ -19,7 +19,7 @@ def check_robo_results_accuracy(axis_results):
     # 'Pelvis' in the structured array corresponds to 'PELO', 'PELX', 'PELY', 'PELZ' in the csv (12 values)
     slice_map = { key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields) }
 
-    missing_axes = ['RClav', 'LClav', 'RFoot', 'LFoot', 'Head']
+    missing_axes = []
     accurate = True
 
     actual_results = np.genfromtxt( 'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')

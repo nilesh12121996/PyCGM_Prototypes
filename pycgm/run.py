@@ -14,7 +14,7 @@ def default_cgm_example():
 
     subject = pyCGM(measurements, static_trial, marker_data)
     subject.multi_run()
-    # check_robo_results_accuracy(subject.axes)
+    check_robo_results_accuracy(subject.axes)
     subject_pelvis                 = subject.axes['Pelvis']        # subject's pelvis axis at each frame
     subject_pelvis_axis_frame_400  = subject.axes[400]['Pelvis']   # subject's pelvis axis at frame 400
     subject_pelvis_angle_frame_400 = subject.angles[400]['Pelvis'] # subject's pelvis angle at frame 400
@@ -87,8 +87,8 @@ def multiple_custom_subjects_example():
     eyeball_left         = eyeball_subject.axes['LEyeball']   # left eyeball axis, all frames
 
 default_cgm_example()
-harrington_cgm_example()
-oxford_foot_example()
-additional_function_example()
-multiple_similar_subjects_example()
-multiple_custom_subjects_example()
+# harrington_cgm_example()
+# oxford_foot_example()
+# additional_function_example()
+# multiple_similar_subjects_example()
+# multiple_custom_subjects_example()

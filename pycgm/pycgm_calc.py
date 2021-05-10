@@ -6,8 +6,8 @@ from math import pi, sin, cos, radians
 class CalcAxes():
 
     def __init__(self):
-        self.funcs = [self.pelvis_axis, self.hip_joint_center, self.hip_axis, self.knee_axis, self.ankle_axis, self.foot_axis,
-                      self.head_axis, self.thorax_axis, self.clav_axis, self.hum_axis, self.rad_axis, self.hand_axis]
+        self.funcs = [self.pelvis_axis, self.hip_joint_center, self.hip_axis, self.knee_axis, self.ankle_axis, self.foot_axis, self.head_axis, 
+                      self.thorax_axis, self.wand_marker, self.clav_joint_center, self.clav_axis, self.hum_axis, self.rad_axis, self.hand_axis]
 
     def pelvis_axis(self, rasi, lasi, rpsi, lpsi, sacr=None):
         # get the refactored 4x4 pelvis axis
@@ -402,11 +402,237 @@ class CalcAxes():
 
         return axis
 
-    def foot_axis(self):
-        return np.zeros((2, 4, 4))
+    def foot_axis(self, rtoe, ltoe, r_ankle_axis, l_ankle_axis, r_static_rot_off, l_static_rot_off, r_static_plant_flex, l_static_plant_flex):
+        # REQUIRE JOINT CENTER & AXIS
+        # KNEE JOINT CENTER
+        # ANKLE JOINT CENTER
+        # ANKLE FLEXION AXIS
 
-    def head_axis(self):
-        return np.zeros((4, 4))
+        ankle_JC_R = r_ankle_axis[:3, 3]
+        ankle_JC_L = l_ankle_axis[:3, 3]
+        ankle_flexion_R = r_ankle_axis[1, :3]
+        ankle_flexion_L = l_ankle_axis[1, :3]
+
+        # Toe axis's origin is marker position of TOE
+        R = rtoe
+        L = ltoe
+
+        # HERE IS THE INCORRECT AXIS
+
+        # the first setting, the foot axis show foot uncorrected anatomical axis and static_info is None
+        ankle_JC_R = [ankle_JC_R[0], ankle_JC_R[1], ankle_JC_R[2]]
+        ankle_JC_L = [ankle_JC_L[0], ankle_JC_L[1], ankle_JC_L[2]]
+
+        # Right
+
+        # z axis is from TOE marker to AJC. and normalized it.
+        R_axis_z = [ankle_JC_R[0]-rtoe[0],
+                    ankle_JC_R[1]-rtoe[1], ankle_JC_R[2]-rtoe[2]]
+        R_axis_z_div = np.linalg.norm(R_axis_z)
+        R_axis_z = [R_axis_z[0]/R_axis_z_div, R_axis_z[1] /
+                    R_axis_z_div, R_axis_z[2]/R_axis_z_div]
+
+        # bring the flexion axis of ankle axes from AnkleJointCenter function. and normalized it.
+        y_flex_R = ankle_flexion_R - ankle_JC_R
+        y_flex_R_div = np.linalg.norm(y_flex_R)
+        y_flex_R = y_flex_R/y_flex_R_div
+
+        # x axis is calculated as a cross product of z axis and ankle flexion axis.
+        R_axis_x = np.cross(y_flex_R, R_axis_z)
+        R_axis_x_div = np.linalg.norm(R_axis_x)
+        R_axis_x = [R_axis_x[0]/R_axis_x_div, R_axis_x[1] /
+                    R_axis_x_div, R_axis_x[2]/R_axis_x_div]
+
+        # y axis is then perpendicularly calculated from z axis and x axis. and normalized.
+        R_axis_y = np.cross(R_axis_z, R_axis_x)
+        R_axis_y_div = np.linalg.norm(R_axis_y)
+        R_axis_y = [R_axis_y[0]/R_axis_y_div, R_axis_y[1] /
+                    R_axis_y_div, R_axis_y[2]/R_axis_y_div]
+
+        R_foot_axis = [R_axis_x, R_axis_y, R_axis_z]
+
+        # Left
+
+        # z axis is from TOE marker to AJC. and normalized it.
+        L_axis_z = [ankle_JC_L[0]-ltoe[0],
+                    ankle_JC_L[1]-ltoe[1], ankle_JC_L[2]-ltoe[2]]
+        L_axis_z_div = np.linalg.norm(L_axis_z)
+        L_axis_z = [L_axis_z[0]/L_axis_z_div, L_axis_z[1] /
+                    L_axis_z_div, L_axis_z[2]/L_axis_z_div]
+
+        # bring the flexion axis of ankle axes from AnkleJointCenter function. and normalized it.
+        y_flex_L = [ankle_flexion_L[0]-ankle_JC_L[0], ankle_flexion_L[1] -
+                    ankle_JC_L[1], ankle_flexion_L[2]-ankle_JC_L[2]]
+        y_flex_L_div = np.linalg.norm(y_flex_L)
+        y_flex_L = [y_flex_L[0]/y_flex_L_div, y_flex_L[1] /
+                    y_flex_L_div, y_flex_L[2]/y_flex_L_div]
+
+        # x axis is calculated as a cross product of z axis and ankle flexion axis.
+        L_axis_x = np.cross(y_flex_L, L_axis_z)
+        L_axis_x_div = np.linalg.norm(L_axis_x)
+        L_axis_x = [L_axis_x[0]/L_axis_x_div, L_axis_x[1] /
+                    L_axis_x_div, L_axis_x[2]/L_axis_x_div]
+
+        # y axis is then perpendicularly calculated from z axis and x axis. and normalized.
+        L_axis_y = np.cross(L_axis_z, L_axis_x)
+        L_axis_y_div = np.linalg.norm(L_axis_y)
+        L_axis_y = [L_axis_y[0]/L_axis_y_div, L_axis_y[1] /
+                    L_axis_y_div, L_axis_y[2]/L_axis_y_div]
+
+        L_foot_axis = [L_axis_x, L_axis_y, L_axis_z]
+
+        foot_axis = [R_foot_axis, L_foot_axis]
+
+        # Apply static offset angle to the incorrect foot axes
+
+        # static offset angle are taken from static_info variable in radians.
+        R_alpha = r_static_rot_off
+        R_beta = r_static_plant_flex
+        #R_gamma = static_info[0][2]
+        L_alpha = l_static_rot_off
+        L_beta = l_static_plant_flex
+        #L_gamma = static_info[1][2]
+
+        R_alpha = np.around(math.degrees(R_alpha), decimals=5)
+        R_beta = np.around(math.degrees(R_beta), decimals=5)
+        #R_gamma = np.around(math.degrees(static_info[0][2]),decimals=5)
+        L_alpha = np.around(math.degrees(L_alpha), decimals=5)
+        L_beta = np.around(math.degrees(L_beta), decimals=5)
+        #L_gamma = np.around(math.degrees(static_info[1][2]),decimals=5)
+
+        R_alpha = -math.radians(R_alpha)
+        R_beta = math.radians(R_beta)
+        #R_gamma = 0
+        L_alpha = math.radians(L_alpha)
+        L_beta = math.radians(L_beta)
+        #L_gamma = 0
+
+        R_axis = [[(R_foot_axis[0][0]), (R_foot_axis[0][1]), (R_foot_axis[0][2])],
+                  [(R_foot_axis[1][0]), (R_foot_axis[1][1]), (R_foot_axis[1][2])],
+                  [(R_foot_axis[2][0]), (R_foot_axis[2][1]), (R_foot_axis[2][2])]]
+
+        L_axis = [[(L_foot_axis[0][0]), (L_foot_axis[0][1]), (L_foot_axis[0][2])],
+                  [(L_foot_axis[1][0]), (L_foot_axis[1][1]), (L_foot_axis[1][2])],
+                  [(L_foot_axis[2][0]), (L_foot_axis[2][1]), (L_foot_axis[2][2])]]
+
+        # rotate incorrect foot axis around y axis first.
+
+        # right
+        R_rotmat = [[(math.cos(R_beta)*R_axis[0][0]+math.sin(R_beta)*R_axis[2][0]),
+                    (math.cos(R_beta)*R_axis[0][1] +
+                     math.sin(R_beta)*R_axis[2][1]),
+                    (math.cos(R_beta)*R_axis[0][2]+math.sin(R_beta)*R_axis[2][2])],
+                    [R_axis[1][0], R_axis[1][1], R_axis[1][2]],
+                    [(-1*math.sin(R_beta)*R_axis[0][0]+math.cos(R_beta)*R_axis[2][0]),
+                    (-1*math.sin(R_beta)*R_axis[0]
+                     [1]+math.cos(R_beta)*R_axis[2][1]),
+                    (-1*math.sin(R_beta)*R_axis[0][2]+math.cos(R_beta)*R_axis[2][2])]]
+        # left
+        L_rotmat = [[(math.cos(L_beta)*L_axis[0][0]+math.sin(L_beta)*L_axis[2][0]),
+                    (math.cos(L_beta)*L_axis[0][1] +
+                     math.sin(L_beta)*L_axis[2][1]),
+                    (math.cos(L_beta)*L_axis[0][2]+math.sin(L_beta)*L_axis[2][2])],
+                    [L_axis[1][0], L_axis[1][1], L_axis[1][2]],
+                    [(-1*math.sin(L_beta)*L_axis[0][0]+math.cos(L_beta)*L_axis[2][0]),
+                    (-1*math.sin(L_beta)*L_axis[0]
+                     [1]+math.cos(L_beta)*L_axis[2][1]),
+                    (-1*math.sin(L_beta)*L_axis[0][2]+math.cos(L_beta)*L_axis[2][2])]]
+
+        # rotate incorrect foot axis around x axis next.
+
+        # right
+        R_rotmat = np.array([[R_rotmat[0][0], R_rotmat[0][1], R_rotmat[0][2]],
+                             [(math.cos(R_alpha)*R_rotmat[1][0]-math.sin(R_alpha)*R_rotmat[2][0]),
+                              (math.cos(R_alpha)*R_rotmat[1][1] -
+                               math.sin(R_alpha)*R_rotmat[2][1]),
+                              (math.cos(R_alpha)*R_rotmat[1][2]-math.sin(R_alpha)*R_rotmat[2][2])],
+                             [(math.sin(R_alpha)*R_rotmat[1][0]+math.cos(R_alpha)*R_rotmat[2][0]),
+                              (math.sin(R_alpha)*R_rotmat[1][1] +
+                                 math.cos(R_alpha)*R_rotmat[2][1]),
+                              (math.sin(R_alpha)*R_rotmat[1][2]+math.cos(R_alpha)*R_rotmat[2][2])]])
+
+        # left
+        L_rotmat = np.asarray([[L_rotmat[0][0], L_rotmat[0][1], L_rotmat[0][2]],
+                               [(math.cos(L_alpha)*L_rotmat[1][0]-math.sin(L_alpha)*L_rotmat[2][0]),
+                                (math.cos(L_alpha)*L_rotmat[1][1] -
+                                 math.sin(L_alpha)*L_rotmat[2][1]),
+                                (math.cos(L_alpha)*L_rotmat[1][2]-math.sin(L_alpha)*L_rotmat[2][2])],
+                               [(math.sin(L_alpha)*L_rotmat[1][0]+math.cos(L_alpha)*L_rotmat[2][0]),
+                                (math.sin(L_alpha)*L_rotmat[1][1] +
+                                   math.cos(L_alpha)*L_rotmat[2][1]),
+                                (math.sin(L_alpha)*L_rotmat[1][2]+math.cos(L_alpha)*L_rotmat[2][2])]])
+
+        # Bring each x,y,z axis from rotation axes
+        R_axis_x = R_rotmat[0]
+        R_axis_y = R_rotmat[1]
+        R_axis_z = R_rotmat[2]
+        L_axis_x = L_rotmat[0]
+        L_axis_y = L_rotmat[1]
+        L_axis_z = L_rotmat[2]
+
+        # Attach each axis to the origin
+
+        r_foot_axis = np.zeros((4, 4))
+        r_foot_axis[3, 3] = 1.0
+        r_foot_axis[:3, :3] = R_rotmat
+        r_foot_axis[:3, 3] = R
+
+        l_foot_axis = np.zeros((4, 4))
+        l_foot_axis[3, 3] = 1.0
+        l_foot_axis[:3, :3] = L_rotmat
+        l_foot_axis[:3, 3] = L
+
+        foot_axis = np.array([r_foot_axis, l_foot_axis])
+
+        return foot_axis
+
+    def head_axis(self, lfhd, rfhd, lbhd, rbhd):
+
+        # get the midpoints of the head to define the sides
+        front = (lfhd + rfhd)/2.0
+        back = (lbhd + rbhd)/2.0
+        left = (lbhd + rbhd)/2.0
+        right = (rfhd + rbhd)/2.0
+
+        # Get the vectors from the sides with primary x axis facing front
+        # First get the x direction
+        x_axis = np.subtract(front, back)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
+
+        # get the direction of the y axis
+        y_axis = np.subtract(left, right)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
+
+        # get z axis by cross-product of x axis and y axis.
+        z_axis = np.subtract(x_axis, y_axis)
+        z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
+        if z_axis_norm:
+            z_axis = np.divide(z_axis, z_axis_norm)
+
+        # make sure all x,y,z axis is orthogonal each other by cross-product
+        y_axis = np.subtract(z_axis, x_axis)
+        y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
+        if y_axis_norm:
+            y_axis = np.divide(y_axis, y_axis_norm)
+        x_axis = np.subtract(y_axis, z_axis)
+        x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
+        if x_axis_norm:
+            x_axis = np.divide(x_axis, x_axis_norm)
+
+        # Create the return matrix
+        head_axis = np.zeros((4, 4))
+        head_axis[3, 3] = 1.0
+        head_axis[0, :3] = x_axis
+        head_axis[1, :3] = y_axis
+        head_axis[2, :3] = z_axis
+        head_axis[:3, 3] = front
+
+        return head_axis
+
 
     def thorax_axis(self, clav, c7, strn, t10):
         clav, c7, strn, t10 = map(np.asarray, [clav, c7, strn, t10])
@@ -451,8 +677,124 @@ class CalcAxes():
 
         return thorax
 
-    def clav_axis(self):
-        return np.zeros((2, 4, 4))
+    def wand_marker(self, rsho, lsho, thorax):
+        thorax_origin = thorax[:3, 3]
+
+        axis_x_vec = thorax[0, :3]
+
+        # Calculate for getting a wand marker
+
+        RSHO_vec = rsho - thorax_origin
+        LSHO_vec = lsho - thorax_origin
+        RSHO_vec = RSHO_vec/np.linalg.norm(RSHO_vec)
+        LSHO_vec = LSHO_vec/np.linalg.norm(LSHO_vec)
+
+        R_wand = np.cross(RSHO_vec, axis_x_vec)
+        R_wand = R_wand/np.linalg.norm(R_wand)
+        R_wand = thorax_origin + R_wand
+
+        r_wand = np.identity(4)
+        r_wand[:3, 3] = R_wand
+
+        L_wand = np.cross(axis_x_vec, LSHO_vec)
+        L_wand = L_wand/np.linalg.norm(L_wand)
+        L_wand = thorax_origin + L_wand
+
+        l_wand = np.identity(4)
+        l_wand[:3, 3] = L_wand
+
+        wand = np.array([r_wand, l_wand])
+
+        return wand
+
+    def clav_joint_center(self, rsho, lsho, thorax_axis, r_wand, l_wand, r_sho_off, l_sho_off):
+        thorax_origin = thorax_axis[:3, 3]
+
+        # Get Subject Measurement Values
+        mm = 7.0
+        R_delta = (r_sho_off + mm)
+        L_delta = (l_sho_off + mm)
+
+        # REQUIRED MARKERS:
+        # RSHO
+        # LSHO
+
+        R_Sho_JC = CalcUtils.find_joint_center(
+            r_wand[:3, 3], thorax_origin, rsho, R_delta)
+        L_Sho_JC = CalcUtils.find_joint_center(
+            l_wand[:3, 3], thorax_origin, lsho, L_delta)
+
+        r_sho_jc = np.identity(4)
+        r_sho_jc[:3, 3] = R_Sho_JC
+
+        l_sho_jc = np.identity(4)
+        l_sho_jc[:3, 3] = L_Sho_JC
+
+        Sho_JC = np.array([r_sho_jc, l_sho_jc])
+
+        return Sho_JC
+
+    def clav_axis(self, thorax_axis, r_sho_jc, l_sho_jc, r_wand, l_wand):
+        thorax_origin = thorax_axis[:3, 3]
+
+        R_shoulderJC = r_sho_jc[:3, 3]
+        L_shoulderJC = l_sho_jc[:3, 3]
+
+        R_wand = r_wand[:3, 3]
+        L_wand = l_wand[:3, 3]
+
+        R_wand_direc = R_wand - thorax_origin
+        L_wand_direc = L_wand - thorax_origin
+        R_wand_direc = R_wand_direc/np.linalg.norm(R_wand_direc)
+        L_wand_direc = L_wand_direc/np.linalg.norm(L_wand_direc)
+
+        # Right
+
+        # Get the direction of the primary axis Z,X,Y
+        z_direc = thorax_origin - R_shoulderJC
+        z_direc = z_direc/np.linalg.norm(z_direc)
+        y_direc = R_wand_direc * -1
+        x_direc = np.cross(y_direc, z_direc)
+        x_direc = x_direc/np.linalg.norm(x_direc)
+        y_direc = np.cross(z_direc, x_direc)
+        y_direc = y_direc/np.linalg.norm(y_direc)
+
+        # backwards to account for marker size
+        x_axis = x_direc
+        y_axis = y_direc
+        z_axis = z_direc
+
+        r_sho = np.zeros((4, 4))
+        r_sho[3, 3] = 1.0
+        r_sho[0, :3] = x_axis
+        r_sho[1, :3] = y_axis
+        r_sho[2, :3] = z_axis
+        r_sho[:3, 3] = R_shoulderJC
+
+        # Left
+
+        # Get the direction of the primary axis Z,X,Y
+        z_direc = thorax_origin - L_shoulderJC
+        z_direc = z_direc/np.linalg.norm(z_direc)
+        y_direc = L_wand_direc
+        x_direc = np.cross(y_direc, z_direc)
+        x_direc = x_direc/np.linalg.norm(x_direc)
+        y_direc = np.cross(z_direc, x_direc)
+        y_direc = y_direc/np.linalg.norm(y_direc)
+
+        # backwards to account for marker size
+        x_axis = x_direc
+        y_axis = y_direc
+        z_axis = z_direc
+
+        l_sho = np.zeros((4, 4))
+        l_sho[3, 3] = 1.0
+        l_sho[0, :3] = x_axis
+        l_sho[1, :3] = y_axis
+        l_sho[2, :3] = z_axis
+        l_sho[:3, 3] = L_shoulderJC
+
+        return np.array([r_sho, l_sho])
 
     def hum_axis(self, relb, lelb, rwra, rwrb, lwra, lwrb, r_shoulder_jc, l_shoulder_jc, r_elbow_width, l_elbow_width, r_wrist_width, l_wrist_width, mm):
         """Calculate the Elbow joint axis (Humerus) function.

@@ -94,12 +94,28 @@ class AxisFunctions():
             ],
 
             [
-                # clav_axis/shoulder_axis parameters
+                # wand_marker parameters
+                Marker('RSHO'), Marker('LSHO'),
+                Axis('Thorax')
+
+            ],
+
+            [
+                # clav_joint_center/shoulder_joint_center
                 Marker('RSHO'), Marker('LSHO'),
                 Axis('Thorax'), Axis('RWand'),
                 Axis('LWand'),
                 Measurement('RightShoulderOffset'),
                 Measurement('LeftShoulderOffset')
+            ],
+
+            [
+                # clav_axis/shoulder_axis parameters
+                Axis('Thorax'),
+                Axis('RClavJC'),
+                Axis('LClavJC'),
+                Axis('RWand'),
+                Axis('LWand')
             ],
 
             [
