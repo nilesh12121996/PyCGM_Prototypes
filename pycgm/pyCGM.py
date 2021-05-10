@@ -71,10 +71,10 @@ class pyCGM():
                                          'wrist_angle': ['RWrist', 'LWrist']}
 
         # map returned axis and angle indices so functions can use results of the current frame
-        self.axis_keys             = list(chain(*self.axis_function_to_return.values())) # flat list of all returned axes
-        self.angle_keys            = list(chain(*self.angle_function_to_return.values())) # flat list of all returned angles
-        self.axis_name_to_index    = { axis: index for index, axis in enumerate(self.axis_keys) }
-        self.angle_name_to_index   = { angle: index for index, angle in enumerate(self.angle_keys) }
+        self.axis_keys           = list(chain(*self.axis_function_to_return.values())) # flat list of all returned axes
+        self.angle_keys          = list(chain(*self.angle_function_to_return.values())) # flat list of all returned angles
+        self.axis_name_to_index  = { axis: index for index, axis in enumerate(self.axis_keys) }
+        self.angle_name_to_index = { angle: index for index, angle in enumerate(self.angle_keys) }
 
         # structured array helper attributes
         self.num_frames                 = len(self.marker_data)
@@ -208,11 +208,13 @@ class pyCGM():
         if isinstance(function, str):  # make sure a function name is passed
             if function in self.axis_function_to_index:
                 # set parameters of modified axis function
+
                 self.axis_functions[self.axis_function_to_index[function]] = getattr(self, function)
                 self.axis_func_parameters[self.axis_function_to_index[function]] = params
 
             elif function in self.angle_function_to_index:
                 # set parameters of modified angle function
+
                 self.angle_functions[self.angle_function_to_index[function]] = getattr(self, function)
                 self.angle_func_parameters[self.angle_function_to_index[function]] = params
 
@@ -224,24 +226,24 @@ class pyCGM():
         if returns_axes is not None:
         # add returned axes, update related attributes
 
-            self.axis_function_to_return[function]   = returns_axes
+            self.axis_function_to_return[function] = returns_axes
 
-            self.num_axes                            = len(list(chain(*self.axis_function_to_return.values()))) # len(all of the returned axes)
-            self.axis_name_to_index                  = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
-            self.num_axis_floats_per_frame           = self.num_axes * 16
+            self.num_axes                          = len(list(chain(*self.axis_function_to_return.values()))) # len(all of the returned axes)
+            self.num_axis_floats_per_frame         = self.num_axes * 16
+            self.axis_results_shape                = (self.num_frames, self.num_axes, 4, 4)
 
-            self.axis_results_shape                  = (self.num_frames, self.num_axes, 4, 4)
+            self.axis_name_to_index                = {axis_name: index for index, axis_name in enumerate(self.axis_keys)}
 
         if returns_angles is not None:
         # add returned angles, update related attributes
 
-            self.angle_function_to_return[function]   = returns_angles
+            self.angle_function_to_return[function] = returns_angles
 
-            self.num_angles                           = len(list(chain(*self.angle_function_to_return.values()))) # len(all of the returned angles)
-            self.num_angle_floats_per_frame           = self.num_angles * 3
-            self.angle_results_shape                  = (self.num_frames, self.num_angles, 3)
+            self.num_angles                         = len(list(chain(*self.angle_function_to_return.values()))) # len(all of the returned angles)
+            self.num_angle_floats_per_frame         = self.num_angles * 3
+            self.angle_results_shape                = (self.num_frames, self.num_angles, 3)
 
-            self.angle_name_to_index                  = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
+            self.angle_name_to_index                = {angle_name: index for index, angle_name in enumerate(self.angle_keys)}
 
     def add_function(self, function, markers=None, measurements=None, axes=None, angles=None, returns_axes=None, returns_angles=None):
         # add a custom function to pycgm
