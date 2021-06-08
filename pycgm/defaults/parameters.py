@@ -84,7 +84,8 @@ class AxisFunctions():
                 Marker('LFHD'),
                 Marker('RFHD'),
                 Marker('LBHD'),
-                Marker('RBHD')
+                Marker('RBHD'),
+                Measurement('HeadOffset')
             ],
 
             [
@@ -225,3 +226,4 @@ class AngleFunctions():
                 Axis('LRad'), Axis('LHand')
             ]
         ]
+

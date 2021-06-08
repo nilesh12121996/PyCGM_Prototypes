@@ -1,43 +1,36 @@
 import numpy as np
 
-def check_robo_results_accuracy(axis_results):
-    # test structured axes against existing csv output file
-
-    csv_fields = ["PELO", "PELX", "PELY", "PELZ", "HIPO", "HIPX", "HIPY", "HIPZ",
-                  "R KNEO", "R KNEX", "R KNEY", "R KNEZ", "L KNEO", "L KNEX", "L KNEY", "L KNEZ",
-                  "R ANKO", "R ANKX", "R ANKY", "R ANKZ", "L ANKO", "L ANKX", "L ANKY", "L ANKZ",
-                  "R FOOO", "R FOOX", "R FOOY", "R FOOZ", "L FOOO", "L FOOX", "L FOOY", "L FOOZ",
-                  "HEAO", "HEAX", "HEAY", "HEAZ", "THOO", "THOX", "THOY", "THOZ", "R CLAO", "R CLAX",
-                  "R CLAY", "R CLAZ", "L CLAO", "L CLAX", "L CLAY", "L CLAZ", "R HUMO", "R HUMX",
-                  "R HUMY", "R HUMZ", "L HUMO", "L HUMX", "L HUMY", "L HUMZ", "R RADO", "R RADX",
-                  "R RADY", "R RADZ", "L RADO", "L RADX", "L RADY", "L RADZ", "R HANO", "R HANX",
-                  "R HANY", "R HANZ", "L HANO", "L HANX", "L HANY", "L HANZ"]
+def check_robo_results_accuracy(axis_results, angle_results):
+    # test structured axes and angles against existing csv output file
 
     axis_array_fields = ['Pelvis', 'Hip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head',
                          'Thorax', 'RClav', 'LClav', 'RHum', 'LHum', 'RRad', 'LRad', 'RHand', 'LHand']
 
-    # 'Pelvis' in the structured array corresponds to 'PELO', 'PELX', 'PELY', 'PELZ' in the csv (12 values)
-    slice_map = { key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields) }
+    angle_array_fields = ['Pelvis', 'RHip', 'LHip', 'RKnee', 'LKnee', 'RAnkle', 'LAnkle', 'RFoot', 'LFoot', 'Head', 'Thorax',
+                          'Neck', 'Spine', 'RShoulder', 'LShoulder', 'RElbow', 'LElbow', 'RWrist', 'LWrist']
 
-    missing_axes = []
+    # 'Pelvis' in the structured axis array corresponds to 'PELO', 'PELX', 'PELY', 'PELZ' in the csv (12 values)
+    axis_slice_map = { key: slice( index*12, index*12+12, 1) for index, key in enumerate(axis_array_fields) }
+
+
+    # 'Pelvis' in the structured angle array corresponds to 'X', 'Y', 'Z' in the csv (3 values)
+    angle_slice_map = { key: slice( index*3, index*3+3, 1) for index, key in enumerate(angle_array_fields) }
+
     accurate = True
 
-    actual_results = np.genfromtxt( 'SampleData/Sample_2/RoboResults_pycgm.csv', delimiter=',')
+    actual_results = np.genfromtxt('SampleData/Sample_2/pycgm_results.csv', delimiter=',')
     for frame_idx, frame in enumerate(actual_results):
-        frame = frame[58:]
+            frame = frame[58:]
 
-        for key, slc in slice_map.items():
-            if any(missing_axis in key for missing_axis in missing_axes):
-                continue
-            else:
+            for key, slc in axis_slice_map.items():
                 original_o = frame[slc.start    :slc.start + 3]
-                original_x = frame[slc.start + 3:slc.start + 6]
-                original_y = frame[slc.start + 6:slc.start + 9]
-                original_z = frame[slc.start + 9:slc.stop]
+                original_x = frame[slc.start + 3:slc.start + 6] - original_o
+                original_y = frame[slc.start + 6:slc.start + 9] - original_o
+                original_z = frame[slc.start + 9:slc.stop]      - original_o
                 refactored_o = axis_results[frame_idx][key][:3, 3]
-                refactored_x = axis_results[frame_idx][key][0, :3] + refactored_o
-                refactored_y = axis_results[frame_idx][key][1, :3] + refactored_o
-                refactored_z = axis_results[frame_idx][key][2, :3] + refactored_o
+                refactored_x = axis_results[frame_idx][key][0, :3]
+                refactored_y = axis_results[frame_idx][key][1, :3]
+                refactored_z = axis_results[frame_idx][key][2, :3]
                 if not np.allclose(original_o, refactored_o):
                     accurate = False
                     error = abs((original_o - refactored_o) / original_o) * 100
@@ -54,4 +47,28 @@ def check_robo_results_accuracy(axis_results):
                     accurate = False
                     error = abs((original_z - refactored_z) / original_z) * 100
                     print(f'{frame_idx}: {key}, z-axis ({error}%')
-    print('All results, not including missing axes, in line with roboresults?', accurate)
+    print('Axes accurate:', accurate)
+
+    for frame_idx, frame in enumerate(actual_results):
+            frame = frame[1:59]
+
+            for key, slc in angle_slice_map.items():
+                original_x = frame[slc][0]
+                original_y = frame[slc][1]
+                original_z = frame[slc][2]
+                refactored_x = angle_results[frame_idx][key][0]
+                refactored_y = angle_results[frame_idx][key][1]
+                refactored_z = angle_results[frame_idx][key][2]
+                if not np.allclose(original_x, refactored_x):
+                    accurate = False
+                    error = abs((original_x - refactored_x) / original_x) * 100
+                    print(f'{frame_idx}: {key} angle, x ({error})%')
+                if not np.allclose(original_y, refactored_y):
+                    accurate = False
+                    error = abs((original_y - refactored_y) / original_y) * 100
+                    print(f'{frame_idx}: {key} angle, y ({error})%')
+                if not np.allclose(original_z, refactored_z):
+                    accurate = False
+                    error = abs((original_z - refactored_z) / original_z) * 100
+                    print(f'{frame_idx}: {key} angle, z ({error})%')
+    print('Angles accurate:', accurate)

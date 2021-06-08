@@ -6,8 +6,8 @@ from math import pi, sin, cos, radians
 class CalcAxes():
 
     def __init__(self):
-        self.funcs = [self.pelvis_axis, self.hip_joint_center, self.hip_axis, self.knee_axis, self.ankle_axis, self.foot_axis, self.head_axis, 
-                      self.thorax_axis, self.wand_marker, self.clav_joint_center, self.clav_axis, self.hum_axis, self.rad_axis, self.hand_axis]
+        self.funcs = [self.pelvis_axis, self.hip_joint_center, self.hip_axis, self.knee_axis, self.ankle_axis, self.foot_axis,
+                      self.head_axis, self.thorax_axis, self.wand_marker, self.clav_joint_center, self.clav_axis, self.hum_axis, self.rad_axis, self.hand_axis]
 
     def pelvis_axis(self, rasi, lasi, rpsi, lpsi, sacr=None):
         # get the refactored 4x4 pelvis axis
@@ -63,7 +63,7 @@ class CalcAxes():
         Examples
         --------
         >>> import numpy as np
-        >>> from .axis import hip_joint_center
+        >>> from .pycgm_calc import CalcAxes
         >>> vsk = {'MeanLegLength': 940.0, 'R_AsisToTrocanterMeasure': 72.51,
         ...        'L_AsisToTrocanterMeasure': 72.51, 'InterAsisDistance': 215.90}
         >>> pelvis_axis = np.array([
@@ -72,9 +72,18 @@ class CalcAxes():
         ...     [0, 0.1, 0.99, 1032.89],
         ...     [0, 0, 0, 1]
         ... ])
-        >>> np.around(hip_joint_center(pelvis_axis,vsk), 2) #doctest: +NORMALIZE_WHITESPACE
-        array([[181.71, 340.33, 936.18],
-        [307.36, 323.83, 938.72]])
+        >>> np.around(CalcAxes().hip_joint_center(pelvis_axis, vsk['MeanLegLength'], 
+        ...                                       vsk['R_AsisToTrocanterMeasure'], 
+        ...                                       vsk['L_AsisToTrocanterMeasure'], 
+        ...                                       vsk['InterAsisDistance']), 2) #doctest: +NORMALIZE_WHITESPACE
+        array([[[  1.  ,   0.  ,   0.  , 307.36],
+            [  0.  ,   1.  ,   0.  , 323.83],
+            [  0.  ,   0.  ,   1.  , 938.72],
+            [  0.  ,   0.  ,   0.  ,   1.  ]],
+           [[  1.  ,   0.  ,   0.  , 181.71],
+            [  0.  ,   1.  ,   0.  , 340.33],
+            [  0.  ,   0.  ,   1.  , 936.18],
+            [  0.  ,   0.  ,   0.  ,   1.  ]]])
         """
 
         # Requires
@@ -169,7 +178,7 @@ class CalcAxes():
         # )
 
         # Get shared hip axis, it is inbetween the two hip joint centers
-        hipaxis_center = (np.asarray(r_hip_jc) + np.asarray(l_hip_jc)) / 2.0
+        hipaxis_center = (r_hip_jc + l_hip_jc) / 2.0
 
         # convert pelvis_axis to x,y,z axis to use more easy
         pelvis_x_axis = pelvis_axis[0, :3]
@@ -250,12 +259,6 @@ class CalcAxes():
         r_axis[1, :3] = R_knee_y_axis
         r_axis[2, :3] = R_knee_z_axis
         r_axis[:3, 3] = R
-
-        # Add the origin back to the vector
-        y_axis = L_knee_y_axis
-        z_axis = L_knee_z_axis
-        x_axis = L_knee_x_axis
-        Laxis = np.asarray([x_axis, y_axis, z_axis])
 
         l_axis = np.zeros((4, 4))
         l_axis[3, 3] = 1.0
@@ -410,8 +413,8 @@ class CalcAxes():
 
         ankle_JC_R = r_ankle_axis[:3, 3]
         ankle_JC_L = l_ankle_axis[:3, 3]
-        ankle_flexion_R = r_ankle_axis[1, :3]
-        ankle_flexion_L = l_ankle_axis[1, :3]
+        ankle_flexion_R = r_ankle_axis[1, :3] + ankle_JC_R
+        ankle_flexion_L = l_ankle_axis[1, :3] + ankle_JC_L
 
         # Toe axis's origin is marker position of TOE
         R = rtoe
@@ -586,12 +589,14 @@ class CalcAxes():
 
         return foot_axis
 
-    def head_axis(self, lfhd, rfhd, lbhd, rbhd):
+    def head_axis(self, lfhd, rfhd, lbhd, rbhd, head_offset):
+
+        head_offset = -1*head_offset
 
         # get the midpoints of the head to define the sides
         front = (lfhd + rfhd)/2.0
         back = (lbhd + rbhd)/2.0
-        left = (lbhd + rbhd)/2.0
+        left = (lfhd + lbhd)/2.0
         right = (rfhd + rbhd)/2.0
 
         # Get the vectors from the sides with primary x axis facing front
@@ -608,31 +613,40 @@ class CalcAxes():
             y_axis = np.divide(y_axis, y_axis_norm)
 
         # get z axis by cross-product of x axis and y axis.
-        z_axis = np.subtract(x_axis, y_axis)
+        z_axis = np.cross(x_axis, y_axis)
         z_axis_norm = np.nan_to_num(np.linalg.norm(z_axis))
         if z_axis_norm:
             z_axis = np.divide(z_axis, z_axis_norm)
 
         # make sure all x,y,z axis is orthogonal each other by cross-product
-        y_axis = np.subtract(z_axis, x_axis)
+        y_axis = np.cross(z_axis, x_axis)
         y_axis_norm = np.nan_to_num(np.linalg.norm(y_axis))
         if y_axis_norm:
             y_axis = np.divide(y_axis, y_axis_norm)
-        x_axis = np.subtract(y_axis, z_axis)
+
+        x_axis = np.cross(y_axis, z_axis)
         x_axis_norm = np.nan_to_num(np.linalg.norm(x_axis))
         if x_axis_norm:
             x_axis = np.divide(x_axis, x_axis_norm)
 
+    # rotate the head axis around y axis about head offset angle.
+        x_axis_rot = [x_axis[0]*math.cos(head_offset)+z_axis[0]*math.sin(head_offset),
+                x_axis[1]*math.cos(head_offset)+z_axis[1]*math.sin(head_offset),
+                x_axis[2]*math.cos(head_offset)+z_axis[2]*math.sin(head_offset)]
+        y_axis_rot = [y_axis[0],y_axis[1],y_axis[2]]
+        z_axis_rot = [x_axis[0]*-1*math.sin(head_offset)+z_axis[0]*math.cos(head_offset),
+                x_axis[1]*-1*math.sin(head_offset)+z_axis[1]*math.cos(head_offset),
+                x_axis[2]*-1*math.sin(head_offset)+z_axis[2]*math.cos(head_offset)]
+
         # Create the return matrix
         head_axis = np.zeros((4, 4))
         head_axis[3, 3] = 1.0
-        head_axis[0, :3] = x_axis
-        head_axis[1, :3] = y_axis
-        head_axis[2, :3] = z_axis
+        head_axis[0, :3] = x_axis_rot
+        head_axis[1, :3] = y_axis_rot
+        head_axis[2, :3] = z_axis_rot
         head_axis[:3, 3] = front
 
         return head_axis
-
 
     def thorax_axis(self, clav, c7, strn, t10):
         clav, c7, strn, t10 = map(np.asarray, [clav, c7, strn, t10])
@@ -864,22 +878,22 @@ class CalcAxes():
         ... np.array([830.90, 436.75, 1119.11]), # RWRB marker
         ... np.array([-249.28, 525.32, 1117.09]), # LWRA marker
         ... np.array([-311.77, 477.22, 1125.16]), # LWRB marker
-        ... shoulder_jc,
+        ... shoulder_jc[0],
+        ... shoulder_jc[1],
         ... 74.0, 74.0, 55.0, 55.0, 7.0)] #doctest: +NORMALIZE_WHITESPACE
         [array([[   0.14,   -0.99,   -0.  ,  633.66],
-                [   0.69,    0.1 ,    0.72,  304.95],
-                [  -0.71,   -0.1 ,    0.69, 1256.07],
-                [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[  -0.15,   -0.99,   -0.06, -129.16],
-                [   0.72,   -0.07,   -0.69,  316.86],
-                [   0.68,   -0.15,    0.72, 1258.06],
-                [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[[   1.  ,    0.  ,    0.  ,  793.32],
-                [   0.  ,    1.  ,    0.  ,  451.29],
-                [   0.  ,    0.  ,    1.  , 1084.43],
-                [   0.  ,    0.  ,    0.  ,    1.  ]],
-                [[   1.  ,    0.  ,    0.  , -272.46],
-                [   0.  ,    1.  ,    0.  ,  485.79],
-                [   0.  ,    0.  ,    1.  , 1091.37],
-                [   0.  ,    0.  ,    0.  ,    1.  ]]])]
+               [   0.69,    0.1 ,    0.72,  304.95],
+               [  -0.71,   -0.1 ,    0.69, 1256.07],
+               [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[  -0.15,   -0.99,   -0.06, -129.16],
+               [   0.72,   -0.07,   -0.69,  316.86],
+               [   0.68,   -0.15,    0.72, 1258.06],
+               [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[  1.  ,    0.  ,    0.  ,  793.32],
+               [   0.  ,    1.  ,    0.  ,  451.29],
+               [   0.  ,    0.  ,    1.  , 1084.43],
+               [   0.  ,    0.  ,    0.  ,    1.  ]]),  array([[   1.  ,    0.  ,    0.  , -272.46],
+               [   0.  ,    1.  ,    0.  ,  485.79],
+               [   0.  ,    0.  ,    1.  , 1091.37],
+               [   0.  ,    0.  ,    0.  ,    1.  ]])]
         """
 
         r_elbow_width *= -1
@@ -1089,31 +1103,32 @@ class CalcAxes():
         >>> import numpy as np
         >>> from .pycgm_calc import CalcAxes
         >>> np.set_printoptions(suppress=True)
-        >>> elbow_jc = [ np.array([[   0.15,   -0.99,    0.  ,  633.66],
-        ...        [ 0.69,  0.1,  0.72,  304.95],
-        ...        [-0.71, -0.1,  0.7 , 1256.07],
-        ...        [ 0.  ,  0. ,  0.  ,    1.  ]]),
-        ...        np.array([[  -0.16,   -0.98,   -0.06, -129.16],
-        ...        [ 0.71, -0.07, -0.69,  316.86],
-        ...        [ 0.67, -0.14,  0.72, 1258.06],
-        ...        [ 0.  ,  0.  ,  0.  ,    1.  ]]),
-        ...        np.array([[[1, 0, 0,  793.32],
-        ...             [0, 1, 0,  451.29],
-        ...             [0, 0, 1, 1084.43],
-        ...             [0, 0, 0,    1.  ]],
-        ...            [[1, 0, 0, -272.45],
-        ...             [0, 1, 0,  485.8 ],
-        ...             [0, 0, 1, 1091.36],
-        ...             [0, 0, 0,    1.  ]]])
-        ...    ]
-        >>> [np.around(arr, 2) for arr in CalcAxes().rad_axis(elbow_jc)] #doctest: +NORMALIZE_WHITESPACE
+        >>> r_elbow = np.array([[   0.15,   -0.99,    0.  ,  633.66],
+        ...                       [ 0.69,  0.1,  0.72,  304.95],
+        ...                       [-0.71, -0.1,  0.7 , 1256.07],
+        ...                       [ 0.  ,  0. ,  0.  ,    1.  ]])
+        >>> l_elbow = np.array([[  -0.16,   -0.98,   -0.06, -129.16],
+        ...                     [ 0.71, -0.07, -0.69,  316.86],
+        ...                     [ 0.67, -0.14,  0.72, 1258.06],
+        ...                     [ 0.  ,  0.  ,  0.  ,    1.  ]])
+        >>> r_wrist_jc = np.array([
+        ... [793.77, 450.44, 1084.12, 793.32],
+        ... [794.01, 451.38, 1085.15, 451.29],
+        ... [792.75, 450.76, 1085.05, 1084.43],
+        ... [0, 0, 0, 1]])
+        >>> l_wrist_jc = np.array([
+        ... [-272.92, 485.01, 1090.96, -272.45],
+        ... [-271.74, 485.72, 1090.67, 485.8],
+        ... [-271.94, 485.19, 1091.96, 1091.36],
+        ... [0, 0, 0, 1]])
+        >>> [np.around(arr, 2) for arr in CalcAxes().rad_axis(r_elbow, l_elbow, r_wrist_jc, l_wrist_jc)] #doctest: +NORMALIZE_WHITESPACE
         [array([[   0.44,   -0.84,   -0.31,  793.32],
-            [   0.69,    0.1 ,    0.72,  451.29],
-            [  -0.57,   -0.53,    0.62, 1084.43],
-            [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[  -0.47,   -0.79,   -0.4 , -272.45],
-            [   0.72,   -0.07,   -0.7 ,  485.8 ],
-            [   0.52,   -0.61,    0.6 , 1091.36],
-            [   0.  ,    0.  ,    0.  ,    1.  ]])]
+           [   0.69,    0.1 ,    0.72,  451.29],
+           [  -0.57,   -0.53,    0.62, 1084.43],
+           [   0.  ,    0.  ,    0.  ,    1.  ]]), array([[  -0.47,   -0.79,   -0.4 , -272.45],
+           [   0.72,   -0.07,   -0.7 ,  485.8 ],
+           [   0.52,   -0.61,    0.6 , 1091.36],
+           [   0.  ,    0.  ,    0.  ,    1.  ]])]
         """
         # Bring Elbow joint center, axes and Wrist Joint Center for calculating Radius Axes
 
@@ -1237,21 +1252,20 @@ class CalcAxes():
         >>> lwrb = np.array([-311.77, 477.22, 1125.16])
         >>> rfin = np.array([863.71, 524.44, 1074.54])
         >>> lfin = np.array([-326.65, 558.34, 1091.04])
-        >>> wrist_jc = [[
+        >>> r_wrist_jc = np.array([
         ... [793.77, 450.44, 1084.12, 793.32],
         ... [794.01, 451.38, 1085.15, 451.29],
         ... [792.75, 450.76, 1085.05, 1084.43],
-        ... [0, 0, 0, 1]
-        ... ], [
+        ... [0, 0, 0, 1]])
+        >>> l_wrist_jc = np.array([
         ... [-272.92, 485.01, 1090.96, -272.45],
         ... [-271.74, 485.72, 1090.67, 485.8],
         ... [-271.94, 485.19, 1091.96, 1091.36],
-        ... [0, 0, 0, 1]
-        ... ]]
+        ... [0, 0, 0, 1]])
         >>> r_hand_thickness = 34.0
         >>> l_hand_thickness = 34.0
         >>> [np.around(arr, 2) for arr in CalcAxes().hand_axis(
-        ...     rwra, rwrb, lwra, lwrb, rfin, lfin, wrist_jc, r_hand_thickness, l_hand_thickness)] #doctest: +NORMALIZE_WHITESPACE
+        ...     rwra, rwrb, lwra, lwrb, rfin, lfin, r_wrist_jc, l_wrist_jc, r_hand_thickness, l_hand_thickness)] #doctest: +NORMALIZE_WHITESPACE
         [array([[   0.15,    0.31,    0.94,  859.8 ],
             [  -0.73,    0.68,   -0.11,  517.27],
             [  -0.67,   -0.67,    0.33, 1051.97],
@@ -1383,53 +1397,9 @@ class CalcAngles():
         ...           [ 0.67, -0.14, 0.72, 418.56],
         ...           [0, 0, 0, 1]]
         >>> np.around(CalcAngles().pelvis_angle(axis_p,axis_d), 2)
-        array([-174.82,   39.82,  -10.54])
+        array([-174.82,  -39.26,  100.54])
         """
-
-        beta = np.arctan2((
-            (axis_d[2][0] * axis_p[1][0])
-            + (axis_d[2][1] * axis_p[1][1])
-            + (axis_d[2][2] * axis_p[1][2])
-        ),
-            np.sqrt((
-                axis_d[2][0] * axis_p[0][0]
-                + axis_d[2][1] * axis_p[0][1]
-                + axis_d[2][2] * axis_p[0][2]
-            ) ** 2 + (
-                axis_d[2][0] * axis_p[2][0]
-                + axis_d[2][1] * axis_p[2][1]
-                + axis_d[2][2] * axis_p[2][2]
-            ) ** 2
-        )
-        )
-
-        alpha = np.arctan2((
-            (axis_d[2][0] * axis_p[0][0])
-            + (axis_d[2][1] * axis_p[0][1])
-            + (axis_d[2][2] * axis_p[0][2])
-        ), (
-            (axis_d[2][0] * axis_p[2][0])
-            + (axis_d[2][1] * axis_p[2][1])
-            + (axis_d[2][2] * axis_p[2][2])
-        )
-        )
-
-        gamma = np.arctan2((
-            (axis_d[0][0] * axis_p[1][0])
-            + (axis_d[0][1] * axis_p[1][1])
-            + (axis_d[0][2] * axis_p[1][2])
-        ), (
-            (axis_d[1][0] * axis_p[1][0])
-            + (axis_d[1][1] * axis_p[1][1])
-            + (axis_d[1][2] * axis_p[1][2])
-        )
-        )
-
-        alpha = 180.0 * alpha / pi
-        beta = 180.0 * beta / pi
-        gamma = 180.0 * gamma / pi
-
-        angle = [alpha, beta, gamma]
+        angle = self.get_angle(axis_p, axis_d)
         return np.asarray(angle)
 
     def hip_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
@@ -1439,7 +1409,13 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_angles[0] *= -1
+        right_angles[2] = right_angles[2] * -1 + 90
+
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_angles[0] *= -1
+        left_angles[1] *= -1
+        left_angles[2] = left_angles[2] - 90
 
         return np.array([right_angles, left_angles])
 
@@ -1450,7 +1426,11 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_angles[2] = right_angles[2] * -1 + 90
+
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_angles[1]  *= -1
+        left_angles[2] -= 90
 
         return np.array([right_angles, left_angles])
 
@@ -1461,7 +1441,16 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_z = right_angles[1]
+        right_angles[0] = right_angles[0] * -1 - 90
+        right_angles[1] = right_angles[2] * -1 + 90
+        right_angles[2] = right_z
+
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_z = left_angles[1] * -1
+        left_angles[0] = left_angles[0] * -1 - 90
+        left_angles[1] = left_angles[2] - 90
+        left_angles[2] = left_z
 
         return np.array([right_angles, left_angles])
 
@@ -1472,7 +1461,14 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_z = right_angles[1]
+        right_angles[1] = right_angles[2] - 90
+        right_angles[2] = right_z
+
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_z = left_angles[1] * -1
+        left_angles[1] = (left_angles[2] -90) * -1
+        left_angles[2] = left_z
 
         return np.array([right_angles, left_angles])
 
@@ -1517,7 +1513,7 @@ class CalcAngles():
         ...           [ 0.67, -0.14, 0.72, 412.87],
         ...           [0, 0, 0, 1]]
         >>> np.around(CalcAngles().head_angle(axis_p,axis_d), 2)
-        array([ 185.18,  -39.99, -190.54])
+        array([ 174.82,   39.99, -550.54])
         """
         # this is the angle calculation which order is Y-X-Z
         # alpha is abdcution angle.
@@ -1600,6 +1596,14 @@ class CalcAngles():
             else:
                 gamma = (gamma * -1) - 180.0
 
+
+        alpha *= -1
+        if alpha < -180:
+            alpha += 360
+        beta *= -1
+        if gamma < -180:
+            gamma -= 360
+
         angle = [alpha, beta, gamma]
 
         return np.asarray(angle)
@@ -1609,16 +1613,155 @@ class CalcAngles():
 
             Please refer to the static get_angle function for documentation.
         """
+        global_center = [0,0,0]
+        global_axis_form = CalcUtils.rotmat(x=0, y=0, z=180)
 
-        return np.array(self.get_angle(axis_p, axis_d))
+        global_axis = np.vstack([np.subtract(global_axis_form[0], global_center),
+                                 np.subtract(global_axis_form[1], global_center),
+                                 np.subtract(global_axis_form[2], global_center)])
+
+        thorax = self.get_angle(global_axis, axis_d)
+
+        if thorax[0] > 0:
+            thorax[0] -= 180
+        elif thorax[0] < 0:
+            thorax[0] += 180
+
+        thorax[2] += 90
+
+        return np.asarray(thorax)
 
     def neck_angle(self, axis_p, axis_d):
-        r"""Normal angle calculation.
+        r"""Head angle calculation function.
 
-            Please refer to the static get_angle function for documentation.
+        This function takes in two axes and returns three angles and uses the
+        inverse Euler rotation matrix in YXZ order.
+
+        Returns the angles in degrees.
+
+        Parameters
+        ----------
+        axis_p : list
+            Shows the unit vector of axis_p, the position of the proximal axis.
+        axis_d : list
+            Shows the unit vector of axis_d, the position of the distal axis.
+
+        Returns
+        -------
+        angle : list
+            Returns the gamma, beta, alpha angles in degrees in a 1x3 corresponding list.
+
+        Notes
+        -----
+        :math:`\beta = \arctan2{((axisD_{z} \cdot axisP_{y}), \sqrt{(axisD_{x} \cdot axisP_{y})^2 + (axisD_{y} \cdot axisP_{y})^2}})`
+
+        :math:`\alpha = \arctan2{(-(axisD_{z} \cdot axisP_{x}), axisD_{z} \cdot axisP_{z})}`
+
+        :math:`\gamma = \arctan2{(-(axisD_{x} \cdot axisP_{y}), axisD_{y} \cdot axisP_{y})}`
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from .pycgm_calc import CalcAngles
+        >>> axis_p = [[0.04, 0.99, 0.06, 512.34],
+        ...           [0.99, -0.04, -0.05, 471.15],
+        ...           [-0.05,  0.07, -0.99, 124.14],
+        ...           [0, 0, 0, 1]]
+        >>> axis_d = [[-0.18, -0.98, -0.02, 842.14],
+        ...           [ 0.71, -0.11, -0.69, 985.38],
+        ...           [ 0.67, -0.14, 0.72, 412.87],
+        ...           [0, 0, 0, 1]]
+        >>> np.around(CalcAngles().neck_angle(axis_p,axis_d), 2)
+        array([ -5.18, -39.99, 190.54])
         """
+        # this is the angle calculation which order is Y-X-Z
+        # alpha is abdcution angle.
 
-        return np.array(self.get_angle(axis_p, axis_d))
+        ang = (
+            (-1 * axis_d[2][0] * axis_p[1][0])
+            + (-1 * axis_d[2][1] * axis_p[1][1])
+            + (-1 * axis_d[2][2] * axis_p[1][2])
+        )
+        alpha = np.nan
+        if -1 <= ang <= 1:
+            alpha = np.arcsin(ang)
+
+        # check the abduction angle is in the area between -pi/2 and pi/2
+        # beta is flextion angle
+        # gamma is rotation angle
+
+        beta = np.arctan2(
+            (axis_d[2][0] * axis_p[1][0])
+            + (axis_d[2][1] * axis_p[1][1])
+            + (axis_d[2][2] * axis_p[1][2]),
+            np.sqrt(
+                (
+                    axis_d[0][0] * axis_p[1][0]
+                    + axis_d[0][1] * axis_p[1][1]
+                    + axis_d[0][2] * axis_p[1][2]
+                ) ** 2
+                + (
+                    axis_d[1][0] * axis_p[1][0]
+                    + axis_d[1][1] * axis_p[1][1]
+                    + axis_d[1][2] * axis_p[1][2]
+                ) ** 2
+            ),
+        )
+
+        alpha = np.arctan2(
+            -1 * (
+                (axis_d[2][0] * axis_p[0][0])
+                + (axis_d[2][1] * axis_p[0][1])
+                + (axis_d[2][2] * axis_p[0][2])
+            ), (
+                (axis_d[2][0] * axis_p[2][0])
+                + (axis_d[2][1] * axis_p[2][1])
+                + (axis_d[2][2] * axis_p[2][2])
+            )
+        )
+
+        gamma = np.arctan2(
+            -1 * (
+                (axis_d[0][0] * axis_p[1][0])
+                + (axis_d[0][1] * axis_p[1][1])
+                + (axis_d[0][2] * axis_p[1][2])
+            ), (
+                (axis_d[1][0] * axis_p[1][0])
+                + (axis_d[1][1] * axis_p[1][1])
+                + (axis_d[1][2] * axis_p[1][2])
+            ),
+        )
+
+        alpha = 180.0 * alpha / pi
+        beta = 180.0 * beta / pi
+        gamma = 180.0 * gamma / pi
+
+        beta *= -1
+
+        if alpha < 0:
+            alpha *= -1
+        else:
+            if 0 < alpha < 180:
+                alpha = 180 + (180 - alpha)
+
+        if gamma > 90.0:
+            if gamma > 120:
+                gamma = (gamma - 180) * -1
+            else:
+                gamma = (gamma + 180) * -1
+        else:
+            if gamma < 0:
+                gamma = (gamma + 180) * -1
+            else:
+                gamma = (gamma * -1) - 180.0
+
+
+        neck = [alpha, beta, gamma]
+
+        neck[0] = (neck[0] - 180) * -1
+        neck[2] *= -1
+
+        return np.asarray(neck)
 
     def spine_angle(self, axis_p, axis_d):
         r"""Spine angle calculation.
@@ -1660,7 +1803,7 @@ class CalcAngles():
         ...        [ 0.67, -0.14,   0.72, 155.77],
         ...        [0, 0, 0, 1]]
         >>> np.around(CalcAngles().spine_angle(axis_p,axis_d), 2)
-        array([ 2.97,  9.13, 39.78])
+        array([  2.97, -39.78,   9.13])
         """
         # this angle calculation is for spine angle.
 
@@ -1683,6 +1826,10 @@ class CalcAngles():
         )
 
         angle = [180.0 * beta / pi, 180.0 * gamma / pi, 180.0 * alpha / pi]
+
+        angle_z = angle[1]
+        angle[1] = angle[2] * -1
+        angle[2] = angle_z
 
         return np.asarray(angle)
 
@@ -1727,8 +1874,8 @@ class CalcAngles():
         ...        [ 0.67, -0.14, 0.72, 541.98],
         ...        [0, 0, 0, 1]]
         >>> np.around(CalcAngles().shoulder_angle(axis_p,axis_d,axis_p,axis_d), 2) #doctest: +NORMALIZE_WHITESPACE
-        array([[  -3.93, -140.07,  172.9 ],
-        [  -3.93, -140.07,  172.9 ]])
+        array([[ 3.93, 39.93, -7.1 ],
+        [ 3.93, 39.93, 7.1 ]])
         """
 
         # beta is flexion / extension
@@ -1803,6 +1950,29 @@ class CalcAngles():
         left_angle = [180.0 * alpha / pi,
                       180.0 * beta / pi, 180.0 * gamma / pi]
 
+        if right_angle[2] < 0:
+            right_angle[2] += 180
+        elif right_angle[2] > 0:
+            right_angle[2] -= 180
+
+        if right_angle[1] > 0:
+            right_angle[1] -= 180
+        elif right_angle[1] < 0:
+            right_angle[1] = right_angle[1] * -1 - 180
+
+        if left_angle[1] < 0:
+            left_angle[1] += 180
+        elif left_angle[1] > 0:
+            left_angle[1] -= 180
+
+
+        
+        right_angle[0] *= -1
+        right_angle[1] *= -1
+
+        left_angle[0] *= -1
+        left_angle[2] = (left_angle[2] - 180) * -1
+
         return np.array([right_angle, left_angle])
 
     def elbow_angle(self, r_axis_p, r_axis_d, l_axis_p, l_axis_d):
@@ -1812,7 +1982,9 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_angles[2] -= 90
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_angles[2] -= 90
 
         return np.array([right_angles, left_angles])
 
@@ -1823,7 +1995,11 @@ class CalcAngles():
         """
 
         right_angles = self.get_angle(r_axis_p, r_axis_d)
+        right_angles[2] = right_angles[2] * -1 + 90
+
         left_angles = self.get_angle(l_axis_p, l_axis_d)
+        left_angles[1] *= -1
+        left_angles[2] -= 90
 
         return np.array([right_angles, left_angles])
 
@@ -2110,115 +2286,44 @@ class CalcUtils:
         return joint_center
 
     @staticmethod
-    def hip_joint_center(pelvis, mean_leg_length, right_asis_to_trochanter, left_asis_to_trochanter, interAsisMeasure):
-        u"""Get the right and left hip joint center.
-        Takes in a 4x4 affine matrix of pelvis axis and subject measurements
-        dictionary. Calculates and returns the left and right hip joint centers.
-        Subject Measurement values used: MeanLegLength, R_AsisToTrocanterMeasure,
-        InterAsisDistance, L_AsisToTrocanterMeasure
-        Hip Joint Center: Computed using Hip Joint Center Calculation [1]_.
-        Parameters
-        ----------
-        pelvis : array
-            A 4x4 affine matrix with pelvis x, y, z axes and pelvis origin.
-        subject : dict
-            A dictionary containing subject measurements.
-        Returns
-        -------
-        hip_jc : array
-            A 2x3 array that contains two 1x3 arrays
-            containing the x, y, z components of the left and right hip joint
-            centers.
-        References
-        ----------
-        .. [1] Davis, R. B., III, Õunpuu, S., Tyburski, D. and Gage, J. R. (1991).
-                A gait analysis data collection and reduction technique.
-                Human Movement Science 10 575–87.
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from .axis import hip_joint_center
-        >>> vsk = {'MeanLegLength': 940.0, 'R_AsisToTrocanterMeasure': 72.51,
-        ...        'L_AsisToTrocanterMeasure': 72.51, 'InterAsisDistance': 215.90}
-        >>> pelvis_axis = np.array([
-        ...     [0.14, 0.98, -0.11, 251.60],
-        ...     [-0.99, 0.13, -0.02, 391.74],
-        ...     [0, 0.1, 0.99, 1032.89],
-        ...     [0, 0, 0, 1]
-        ... ])
-        >>> np.around(hip_joint_center(pelvis_axis,vsk), 2) #doctest: +NORMALIZE_WHITESPACE
-        array([[181.71, 340.33, 936.18],
-        [307.36, 323.83, 938.72]])
-        """
+    def find_wand_marker(thorax, rsho, lsho):
+        thorax_origin = thorax[:3, 3]
 
-        # Requires
-        # pelvis axis
+        tho_axis_x = thorax[0, :3]
 
-        pel_origin = pelvis[:3, 3]
+        # REQUIRED MARKERS:
+        # RSHO
+        # LSHO
 
-        # Model's eigen value
-        #
-        # LegLength
-        # MeanLegLength
-        # mm (marker radius)
-        # interAsisMeasure
+        RSHO = frame['RSHO']
+        LSHO = frame['LSHO']
 
-        # Set the variables needed to calculate the joint angle
-        # Half of marker size
-        mm = 7.0
+        # Calculate for getting a wand marker
 
-        C = (mean_leg_length * 0.115) - 15.3
-        theta = 0.500000178813934
-        beta = 0.314000427722931
-        aa = interAsisMeasure/2.0
-        S = -1
+        # bring x axis from thorax axis
+        axis_x_vec = [tho_axis_x[0]-thorax_origin[0], tho_axis_x[1] -
+                      thorax_origin[1], tho_axis_x[2]-thorax_origin[2]]
+        axis_x_vec = axis_x_vec/np.linalg.norm(axis_x_vec)
 
-        # Hip Joint Center Calculation (ref. Davis_1991)
+        RSHO_vec = [RSHO[0]-thorax_origin[0], RSHO[1] -
+                    thorax_origin[1], RSHO[2]-thorax_origin[2]]
+        LSHO_vec = [LSHO[0]-thorax_origin[0], LSHO[1] -
+                    thorax_origin[1], LSHO[2]-thorax_origin[2]]
+        RSHO_vec = RSHO_vec/np.linalg.norm(RSHO_vec)
+        LSHO_vec = LSHO_vec/np.linalg.norm(LSHO_vec)
 
-        # Left: Calculate the distance to translate along the pelvis axis
-        L_Xh = (-left_asis_to_trochanter - mm) * \
-            math.cos(beta) + C * math.cos(theta) * math.sin(beta)
-        L_Yh = S*(C*math.sin(theta) - aa)
-        L_Zh = (-left_asis_to_trochanter - mm) * \
-            math.sin(beta) - C * math.cos(theta) * math.cos(beta)
+        R_wand = cross(RSHO_vec, axis_x_vec)
+        R_wand = R_wand/np.linalg.norm(R_wand)
+        R_wand = [thorax_origin[0]+R_wand[0],
+                  thorax_origin[1]+R_wand[1],
+                  thorax_origin[2]+R_wand[2]]
 
-        # Right:  Calculate the distance to translate along the pelvis axis
-        R_Xh = (-right_asis_to_trochanter - mm) * \
-            math.cos(beta) + C * math.cos(theta) * math.sin(beta)
-        R_Yh = (C*math.sin(theta) - aa)
-        R_Zh = (-right_asis_to_trochanter - mm) * \
-            math.sin(beta) - C * math.cos(theta) * math.cos(beta)
+        L_wand = cross(axis_x_vec, LSHO_vec)
+        L_wand = L_wand/np.linalg.norm(L_wand)
+        L_wand = [thorax_origin[0]+L_wand[0],
+                  thorax_origin[1]+L_wand[1],
+                  thorax_origin[2]+L_wand[2]]
+        wand = [R_wand, L_wand]
 
-        # get the unit pelvis axis
-        pelvis_xaxis = pelvis[0, :3]
-        pelvis_yaxis = pelvis[1, :3]
-        pelvis_zaxis = pelvis[2, :3]
-        pelvis_axis = pelvis[:3, :3]
+        return wand
 
-        # multiply the distance to the unit pelvis axis
-        left_hip_jc_x = pelvis_xaxis * L_Xh
-        left_hip_jc_y = pelvis_yaxis * L_Yh
-        left_hip_jc_z = pelvis_zaxis * L_Zh
-        # left_hip_jc = left_hip_jc_x + left_hip_jc_y + left_hip_jc_z
-
-        left_hip_jc = np.asarray([
-            left_hip_jc_x[0]+left_hip_jc_y[0]+left_hip_jc_z[0],
-            left_hip_jc_x[1]+left_hip_jc_y[1]+left_hip_jc_z[1],
-            left_hip_jc_x[2]+left_hip_jc_y[2]+left_hip_jc_z[2]
-        ])
-
-        left_hip_jc = pelvis_axis.T @ np.array([L_Xh, L_Yh, L_Zh])
-
-        R_hipJCx = pelvis_xaxis * R_Xh
-        R_hipJCy = pelvis_yaxis * R_Yh
-        R_hipJCz = pelvis_zaxis * R_Zh
-        right_hip_jc = R_hipJCx + R_hipJCy + R_hipJCz
-
-        right_hip_jc = pelvis_axis.T @ np.array([R_Xh, R_Yh, R_Zh])
-
-        left_hip_jc = left_hip_jc+pel_origin
-        right_hip_jc = right_hip_jc+pel_origin
-
-        hip_jc = np.array([left_hip_jc, right_hip_jc])
-
-        return hip_jc

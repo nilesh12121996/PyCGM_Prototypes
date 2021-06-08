@@ -21,14 +21,14 @@ class pyCGM():
         self.measurement_name_to_index = {measurement_key: index for index, measurement_key in enumerate(self.measurement_keys)}
 
         # fill, filter, and prep marker data
-        static_trial_dict  = pycgmIO.data_as_dict(static_trial, npArray=True)
-        dynamic_trial_dict = pycgmIO.data_as_dict(dynamic_trial, npArray=True)
-        dynamic_filled     = rigid_fill(dynamic_trial_dict, static_trial_dict)
-        dynamic_filtered   = filtering(dynamic_filled)
-        dynamic_prepped    = prep(dynamic_filtered)
+        # static_trial_dict  = pycgmIO.data_as_dict(static_trial, npArray=True)
+        # dynamic_trial_dict = pycgmIO.data_as_dict(dynamic_trial, npArray=True)
+        # dynamic_filled     = rigid_fill(dynamic_trial_dict, static_trial_dict)
+        # dynamic_filtered   = filtering(dynamic_filled)
+        # dynamic_prepped    = prep(dynamic_filtered)
 
         # convert list of marker data dicts to array of flat marker data arrays
-        self.marker_data = pycgmIO.dicts_to_flat_arrays(dynamic_prepped)
+        self.marker_data = pycgmIO.dicts_to_flat_arrays(dynamic_trial)
 
         # map the list of marker names to slices
         self.marker_keys          = dynamic_trial[0].keys()
