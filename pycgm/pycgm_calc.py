@@ -10,7 +10,72 @@ class CalcAxes():
                       self.head_axis, self.thorax_axis, self.wand_marker, self.clav_joint_center, self.clav_axis, self.hum_axis, self.rad_axis, self.hand_axis]
 
     def pelvis_axis(self, rasi, lasi, rpsi, lpsi, sacr=None):
-        # get the refactored 4x4 pelvis axis
+        r"""Make the Pelvis Axis.
+
+        Takes in RASI, LASI, RPSI, LPSI, and optional SACR markers.
+        Calculates the pelvis axis.
+
+        Markers used: RASI, LASI, RPSI, LPSI
+        Other landmarks used: sacrum
+
+        Pelvis X_axis: Computed with a Gram-Schmidt orthogonalization procedure
+        [1]_ and then normalized.
+        Pelvis Y_axis: LASI-RASI x,y,z positions, then normalized.
+        Pelvis Z_axis: Cross product of x_axis and y_axis.
+
+        :math:`$o = m_{rasi} + m_{lasi} / 2$`
+
+        :math:`$y = \frac{m_{lasi} - m_{rasi}}{||m_{lasi} - m_{rasi}||}$`
+
+        :math:`x = \frac{(m_{origin} - m_{sacr}) - ((m_{origin} - m_{sacr}) \dot y) * y}{||(m_{origin} - m_{sacr}) - ((m_{origin} - m_{sacr}) \cdot y) \times y||}`
+
+        :math:`z = x \times y`
+
+        Parameters
+        ----------
+        rasi: array
+            1x3 RASI marker
+        lasi: array
+            1x3 LASI marker
+        rpsi: array
+            1x3 RPSI marker
+        lpsi: array
+            1x3 LPSI marker
+        sacr: array, optional
+            1x3 SACR marker. If not present, RPSI and LPSI are used instead.
+
+        Returns
+        -------
+        pelvis : array
+            4x4 affine matrix with pelvis x, y, z axes and pelvis origin.
+
+        .. math::
+
+            \begin{bmatrix}
+                \hat{x}_x & \hat{x}_y & \hat{x}_z & o_x \\
+                \hat{y}_x & \hat{y}_y & \hat{y}_z & o_y \\
+                \hat{z}_x & \hat{z}_y & \hat{z}_z & o_z \\
+                0 & 0 & 0 & 1 \\
+            \end{bmatrix}
+
+        References
+        ----------
+        .. [1] M. P. Kadaba, H. K. Ramakrishnan, and M. E. Wootten, “Measurement of
+                lower extremity kinematics during level walking,” J. Orthop. Res.,
+                vol. 8, no. 3, pp. 383–392, May 1990, doi: 10.1002/jor.1100080310.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from .pycgm_calc import CalcAxes
+        >>> rasi = np.array([ 395.36,  428.09, 1036.82])
+        >>> lasi = np.array([ 183.18,  422.78, 1033.07])
+        >>> rpsi = np.array([ 341.41,  246.72, 1055.99])
+        >>> lpsi = np.array([ 255.79,  241.42, 1057.30])
+        >>> [arr.round(2) for arr in CalcAxes().pelvis_axis(rasi, lasi, rpsi, lpsi, None)] # doctest: +NORMALIZE_WHITESPACE
+        [array([ -0.02,   0.99,  -0.12, 289.27]), array([ -1.  ,  -0.03,  -0.02, 425.43]), array([  -0.02,    0.12,    0.99, 1034.94]), array([0., 0., 0., 1.])]
+        """
+
 
         if rpsi is not None and lpsi is not None:
             sacrum = (rpsi + lpsi)/2.0
