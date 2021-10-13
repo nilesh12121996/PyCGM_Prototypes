@@ -1,4 +1,4 @@
-"""decorator approach"""
+"""functools partial approach"""
 
 import functools
 
