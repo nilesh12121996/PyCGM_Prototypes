@@ -17,34 +17,72 @@ NUM_RUNS = 10
 #print(time)
 #
 #
-#setup = """
-#from utils import pycgmIO
-#from prototypes.decorator import CGM as decCGM
-#
-#data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-#"""
-#time = timeit.timeit(
-#    '[decCGM(frame).pelvis_axis for frame in data]',
+setup = """
+from utils import pycgmIO
+from prototypes.decorator import CGM as decCGM
+
+data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+"""
+time = timeit.timeit(
+   '[decCGM(frame).pelvis_axis for frame in data]',
+   setup=setup,
+   number=NUM_RUNS
+)
+print("=======Decorator approach before modification=======")
+print(time)
+
+
+setup = """
+from utils import pycgmIO
+from prototypes.decorator import ModCGM as decModCGM
+
+data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+"""
+time = timeit.timeit(
+   '[decModCGM(frame).pelvis_axis for frame in data]',
+   setup=setup,
+   number=NUM_RUNS
+)
+print("=======Decorator approach after modification=======")
+print(time)
+
+
+
+
+
+
+# setup = """
+# from utils import pycgmIO
+# from prototypes.partials import CGM as partCGM
+
+# data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+# """
+# time = timeit.timeit(
+#    '[partCGM(frame).pelvis_axis for frame in data]',
 #    setup=setup,
 #    number=NUM_RUNS
-#)
-#print("=======Decorator approach before modification=======")
-#print(time)
-#
-#
-#setup = """
-#from utils import pycgmIO
-#from prototypes.decorator import ModCGM as decModCGM
-#
-#data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-#"""
-#time = timeit.timeit(
-#    '[decModCGM(frame).pelvis_axis for frame in data]',
+# )
+# print("=======Partial approach before modification=======")
+# print(time)
+
+
+# setup = """
+# from utils import pycgmIO
+# from prototypes.partials import ModCGM as partModCGM
+
+# data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+# """
+# time = timeit.timeit(
+#    '[partModCGM(frame).pelvis_axis for frame in data]',
 #    setup=setup,
 #    number=NUM_RUNS
-#)
-#print("=======Decorator approach after modification=======")
-#print(time)
+# )
+# print("=======Partial approach after modification=======")
+# print(time)
+
+
+
+
 #
 #setup = """
 #from utils import pycgmIO
@@ -115,23 +153,23 @@ matt.run()
     number=NUM_RUNS
 )
 
-setup = """
-from utils import pycgmIO
-from prototypes.pyCGM_slices import pyCGM
-from numpy import array, random
+# setup = """
+# from utils import pycgmIO
+# from prototypes.pyCGM_slices import pyCGM                        =====> No module named 'prototypes.pyCGM_slices'
+# from numpy import array, random
 
-data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
+# data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+# measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
 
-"""
-time_slice_single = timeit.timeit(
-    '''
-matt = pyCGM(measurements, data)
-matt.run()
-    ''',
-    setup=setup,
-    number=NUM_RUNS
-)
+# """
+# time_slice_single = timeit.timeit(
+#     '''
+# matt = pyCGM(measurements, data)
+# matt.run()
+#     ''',
+#     setup=setup,
+#     number=NUM_RUNS
+# )
 
 setup = """
 from utils import pycgmIO
@@ -151,31 +189,31 @@ matt.multi_run(1)
     number=NUM_RUNS
 )
 
-setup = """
-from utils import pycgmIO
-from prototypes.pyCGM_slices import pyCGM
-from numpy import array, random
+# setup = """
+# from utils import pycgmIO
+# from prototypes.pyCGM_slices import pyCGM                         ==> No module named 'prototypes.pyCGM_slices'
+# from numpy import array, random
 
-data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
-measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
+# data = pycgmIO.loadData('SampleData/Sample_2/RoboWalk.c3d')
+# measurements = pycgmIO.loadVSK('SampleData/Sample_2/RoboSM.vsk')
 
-"""
-time_slice_multi = timeit.timeit(
-    '''
-matt = pyCGM(measurements, data)
-matt.multi_run(1)
-    ''',
-    setup=setup,
-    number=NUM_RUNS
-)
+# """
+# time_slice_multi = timeit.timeit(
+#     '''
+# matt = pyCGM(measurements, data)
+# matt.multi_run(1)
+#     ''',
+#     setup=setup,
+#     number=NUM_RUNS
+# )
 
 print('\nNumber of runs: ', NUM_RUNS)
 print("One marker struct (run()): %.2f" % time_struct_single)
-print("Passing known slices (run()): %.2f" % time_slice_single)
+# print("Passing known slices (run()): %.2f" % time_slice_single)
 print("\nOne marker struct (multi_run(1)): %.2f" % time_struct_multi)
-print("Passing known slices (multi_run(1)): %.2f" % time_slice_multi)
+# print("Passing known slices (multi_run(1)): %.2f" % time_slice_multi)
 
-print('\nSeconds difference (run()): %.2f' % (time_struct_single - time_slice_single))
-print('Percentage difference (run()): %.2f' % ((time_struct_single/time_slice_single)*100-100))
-print('\nSeconds difference (multi_run(1)): %.2f' % (time_struct_multi-time_slice_multi))
-print('Percentage difference: (multi_run(1)): %.2f' % ((time_struct_multi/time_slice_multi)*100-100))
+# print('\nSeconds difference (run()): %.2f' % (time_struct_single - time_slice_single))
+# print('Percentage difference (run()): %.2f' % ((time_struct_single/time_slice_single)*100-100))
+# print('\nSeconds difference (multi_run(1)): %.2f' % (time_struct_multi-time_slice_multi))
+# print('Percentage difference: (multi_run(1)): %.2f' % ((time_struct_multi/time_slice_multi)*100-100))
