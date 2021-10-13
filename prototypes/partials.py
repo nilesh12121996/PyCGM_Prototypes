@@ -25,7 +25,7 @@ def partial(func, *part_args):
     return wrapper
 
 
-class Gen_PJC_Func:
+class CGM:
     def __init__(self, frame):
         self.frame = frame
         self._pelvis_axis = None
@@ -43,17 +43,7 @@ class Gen_PJC_Func:
         ----------
         frame : dict
             Dictionaries of marker lists.
-        Returns
-        -------
-        pelvis : array
-            Returns an array that contains the pelvis origin in a 1x3 array of xyz values,
-            which is then followed by a [1x3, 3x3, 1x3] array composed of the 
-            pelvis x, y, z axis components, and the sacrum x,y,z position.
-        References
-        ----------
-        .. [1] M. P. Kadaba, H. K. Ramakrishnan, and M. E. Wootten, “Measurement of
-                lower extremity kinematics during level walking,” J. Orthop. Res.,
-                vol. 8, no. 3, pp. 383–392, May 1990, doi: 10.1002/jor.1100080310.
+
         Examples
         --------
         >>> import numpy as np
@@ -97,32 +87,20 @@ class Gen_PJC_Func:
         if 'SACR' in frame:
             sacrum = frame['SACR']
 
-        # REQUIRED LANDMARKS:
-        # origin
-        # sacrum
-
-        # Origin is Midpoint between RASI and LASI
         origin = (RASI+LASI)/2.0
 
-        # This calculate the each axis
-        # beta1,2,3 is arbitrary name to help calculate.
         beta1 = origin-sacrum
         beta2 = LASI-RASI
 
-        # Y_axis is normalized beta2
-        y_axis = beta2/norm3d(beta2)
+        y_axis = beta2/np.linalg.norm(beta2)
 
-        # X_axis computed with a Gram-Schmidt orthogonalization procedure(ref. Kadaba 1990)
-        # and then normalized.
         beta3_cal = np.dot(beta1,y_axis)
         beta3_cal2 = beta3_cal*y_axis
         beta3 = beta1-beta3_cal2
-        x_axis = beta3/norm3d(beta3)
+        x_axis = beta3/np.linalg.norm(beta3)
 
-        # Z-axis is cross product of x_axis and y_axis.
-        z_axis = cross(x_axis,y_axis)
+        z_axis = np.cross(x_axis,y_axis)
 
-        # Add the origin back to the vector
         y_axis = y_axis+origin
         z_axis = z_axis+origin
         x_axis = x_axis+origin
@@ -144,7 +122,7 @@ class Gen_PJC_Func:
         return self._pelvis_axis
 
 
-class Mod_PJC_Func(CGM):
+class ModCGM(CGM):
     def pelvisJointCenter(frame):
         """Make the Pelvis Axis.
         Takes in a dictionary of x,y,z positions and marker names, as well as an index
@@ -158,17 +136,7 @@ class Mod_PJC_Func(CGM):
         ----------
         frame : dict
             Dictionaries of marker lists.
-        Returns
-        -------
-        pelvis : array
-            Returns an array that contains the pelvis origin in a 1x3 array of xyz values,
-            which is then followed by a [1x3, 3x3, 1x3] array composed of the 
-            pelvis x, y, z axis components, and the sacrum x,y,z position.
-        References
-        ----------
-        .. [1] M. P. Kadaba, H. K. Ramakrishnan, and M. E. Wootten, “Measurement of
-                lower extremity kinematics during level walking,” J. Orthop. Res.,
-                vol. 8, no. 3, pp. 383–392, May 1990, doi: 10.1002/jor.1100080310.
+
         Examples
         --------
         >>> import numpy as np
@@ -216,28 +184,19 @@ class Mod_PJC_Func(CGM):
         # origin
         # sacrum
 
-        # Origin is Midpoint between RASI and LASI
         origin = (RASI+LASI)/2.0
 
-        # This calculate the each axis
-        # beta1,2,3 is arbitrary name to help calculate.
         beta1 = origin-sacrum
         beta2 = LASI-RASI
 
-        # Y_axis is normalized beta2
-        y_axis = beta2/norm3d(beta2)
+        y_axis = beta2/np.linalg.norm(beta2)
 
-        # X_axis computed with a Gram-Schmidt orthogonalization procedure(ref. Kadaba 1990)
-        # and then normalized.
         beta3_cal = np.dot(beta1,y_axis)
         beta3_cal2 = beta3_cal*y_axis
         beta3 = beta1-beta3_cal2
-        x_axis = beta3/norm3d(beta3)
+        x_axis = beta3/np.linalg.norm(beta3)
 
-        # Z-axis is cross product of x_axis and y_axis.
-        z_axis = cross(x_axis,y_axis)
-
-        # Add the origin back to the vector
+        z_axis = np.cross(x_axis,y_axis)
         y_axis = y_axis+origin
         z_axis = z_axis+origin
         x_axis = x_axis+origin
